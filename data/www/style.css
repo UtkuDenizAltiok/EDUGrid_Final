@@ -1,0 +1,355 @@
+body {
+  background-color: #2f333a;
+  color: #e4e4e4;
+  height: 100%;
+  /* Full height for the viewport */
+  width: 100%;
+  /* Full width for the viewport */
+}
+
+html {
+  font-family: Arial;
+  display: inline-block;
+  text-align: center;
+}
+/* Make clickable labels feel and act like buttons */
+.normallabel[onclick],
+.headlabel[onclick] {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 2;           /* sit above any decorative layers */
+  padding: 6px 10px;    /* bigger hit area */
+  border-radius: 8px;
+}
+
+.normallabel[onclick]:active,
+.headlabel[onclick]:active {
+  transform: translateY(1px);
+}
+
+/* Ensure slider sits above anything else too */
+.slidecontainer input[type="range"] {
+  position: relative;
+  z-index: 2;
+}
+
+
+h2 {
+  font-size: 3.0rem;
+}
+
+p {
+  font-size: 3.0rem;
+}
+
+body {
+  max-width: 1500px;
+  margin: 0px auto;
+  padding-bottom: 25px;
+}
+
+.gauge-container {
+  position: relative;
+  width: 250px;
+  height: 250px;
+}
+
+.gauge {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(#00ff99 0%, #444 0%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s linear;
+}
+
+.gauge::before {
+  content: '';
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  background-color: #2f333a;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.value-display {
+  position: absolute;
+  font-size: 2em;
+  font-weight: bold;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tank {
+  width: 100px;
+  height: 200px;
+  background: #444;
+  border-radius: 15px;
+  position: absolute;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px #272727;
+  /* padding-top: 1vh; */
+
+  /* Centering */
+  /* top: 50%; */
+  left: 50%;
+  transform: translate(-50%, 0%);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.coil {
+  position: absolute;
+  width: 90px;
+  height: 250px;
+  left: 20px;
+  top: 35px;
+}
+
+.coil path {
+  stroke: rgb(255, 140, 0);
+  stroke-width: 12;
+  fill: none;
+  opacity: 0.4;
+  transition: opacity 0.1s;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 0.8;
+    /* Increase opacity to give the pulsing effect */
+  }
+
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.water {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 50%;
+  background: lightblue;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.waves {
+  position: absolute;
+  bottom: 50%;
+  /* Place waves directly on top of the water */
+  width: 100%;
+  height: 30px;
+  z-index: 1;
+}
+
+.waves svg {
+  width: 200%;
+  height: 100%;
+  animation: wave 10s linear infinite;
+}
+
+@keyframes wave {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 120px;
+  height: 68px
+}
+
+.switch input {
+  display: none
+}
+
+.range {
+  background-color: #6befbd;
+}
+
+.slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* width: 70px; */
+  background-color: #ccc;
+  border-radius: 50px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 52px;
+  width: 52px;
+  left: 8px;
+  bottom: 8px;
+  background-color: #fff;
+  -webkit-transition: .4s;
+  transition: .4s;
+  border-radius: 25px
+}
+
+input:checked+.slider {
+  background-color: #6befbd;
+
+}
+
+input:checked+.slider:before {
+  -webkit-transform: translateX(52px);
+  -ms-transform: translateX(52px);
+  transform: translateX(52px)
+}
+
+label {
+  display: inline-block;
+  width: 150px;
+  text-align: center;
+}
+
+.range_slider {
+  width: 650px;
+  background-color: #6befbd;
+}
+
+.slidecontainer {
+  /* width: 8000px; */
+  color: #6befbd;
+}
+
+.headlabel {
+  font-size: 12px;
+}
+
+.normallabel {
+  font-size: 25px;
+  color: #6befbd;
+  font-weight: bold;
+}
+
+.tumheadline {
+  font-size: 30px;
+  width: auto;
+  font-weight: bold;
+  /* color: #6befbd; */
+}
+
+.chairheadline {
+  font-size: 15px;
+  width: auto;
+  /* color: #6befbd; */
+}
+
+.myButton {
+  background-color: #2f333a;
+  border-radius: 29px;
+  display: inline-block;
+  cursor: pointer;
+  color: #e4e4e4;
+  font-family: Arial;
+  font-size: 17px;
+  font-weight: bold;
+  padding: 10px 35px;
+  text-decoration: none;
+}
+
+.myButton:hover {
+  background-color: #6befbd;
+  color: #2f333a;
+}
+
+.myButton:active {
+  position: relative;
+  top: 1px;
+}
+
+.myEntryField {
+  background-color: #2f333a;
+  color: #e4e4e4;
+  /* background: transparent; */
+  border: 2px solid #e4e4e4;
+  ;
+  padding: 5px 10px;
+  width: 18px;
+}
+
+.box-frame {
+  border: 2px solid #6befbd;
+  /* Color and thickness */
+  padding: 30px 80px;
+  /* Space inside the box */
+  margin: 25px auto;
+  /* Space outside the box and centering */
+  width: fit-content;
+  /* Adjust width to content */
+  border-radius: 12px;
+  /* Optional: rounded corners */
+  /* width: 500px; */
+  /* background-color: #2f5737;  Optional: background */
+}
+
+table {
+  border-collapse: collapse;
+  background-color: #3c3f46;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+th,
+td {
+  padding: 12px 20px;
+  border-bottom: 1px solid #555;
+  text-align: center;
+}
+
+th {
+  background-color: #444a55;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Styling for the message box (hidden by default) */
+.message-box {
+  display: none;
+  background-color: #3c3f46;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+  max-width: 500px;
+  margin-top: 20px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Animation for fading in the message box */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,55 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>TUM EduGrid - Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<!-- Begin Webpage -->
+
+<body>
+  <br /><br />
+
+  <label for="name">WLAN SSID:</label>
+  <input type="text" id="ssid_entry" name="ssid" required minlength="4" maxlength="200" size="50" />
+
+  <br/><br/>
+
+  <label for="name">WLAN Passwort:</label>
+  <input type="text" id="pw_entry" name="pw" required minlength="4" maxlength="200" size="50" />
+  
+  <br/><br/>
+  
+  <button type="button" id="safe_button" onclick="safeButton_pressed(this, ssid_entry, pw_entry)">SAFE WiFi</button> 
+  
+  <br/><br/>
+  
+  <label for="name" id="safed_label" size="500"></label>
+
+
+
+
+
+
+  <script>
+    function safeButton_pressed(button, element1, element2) {
+      var safed_label_text = document.getElementById("safed_label");
+      safed_label_text.innerHTML = "WLAN settings safed!";
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/updatevalues?ID=" + button.id + "&STATE=" + element1.value + "&STATE2=" + element2.value, true);
+      xhr.send();
+    }
+
+
+
+
+  </script>
+
+
+
+</body>
+
+</html>

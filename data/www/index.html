@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>TUM EduGrid</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="/chart.umd.js"></script>
+  <script src="/script.js"></script>
+</head>
+<body>
+  <br /><br />
+
+  <!-- Static text -->
+  <label class="tumheadline">EduGrid PROJECT</label>
+
+  <br /><br /><br /><br /><br /><br />
+
+  <!-- PV (solar) readings -->
+  <label class="headlabel"> VOLTAGE (SOLAR)</label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> CURRENT (SOLAR) </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> POWER (SOLAR) </label><br />
+  <label class="normallabel" id="voltage_in_label">33.53 V</label>
+  <label class="normallabel">&#x2022;</label>
+  <label class="normallabel" id="current_in_label">4.85 A</label>
+  <label class="normallabel">=</label>
+  <label class="normallabel" id="power_in_label">322.67 W</label><br />
+
+  <br /><br />
+
+  <!-- Load readings -->
+  <label class="headlabel"> VOLTAGE (LOAD) </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> CURRENT (LOAD) </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> POWER (LOAD) </label><br />
+  <label class="normallabel" id="voltage_out_label">18.12 V</label>
+  <label class="normallabel">&#x2022;</label>
+  <label class="normallabel" id="current_out_label">16.74 A</label>
+  <label class="normallabel">=</label>
+  <label class="normallabel" id="power_out_label">303.31 W</label><br />
+
+  <br /><br />
+
+  <!-- Efficiency / PWM -->
+  <label class="headlabel"> EFFICIENCY </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> PWM FREQ </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> DUTYCYCLE</label><br />
+  <label class="normallabel" id="efficiency_label">94 &percnt;</label>
+  <label class="normallabel"></label>
+  <label class="normallabel" onclick="labelHit(this)" id="freq_label">40 kHz</label>
+  <label class="normallabel"></label>
+  <label class="normallabel" id="pwm_label">54 &percnt;</label><br />
+
+  <br /><br />
+
+  <h4>PWM</h4>
+  <div class="slidecontainer">
+    <input
+      type="range"
+      id="4"
+      name="PWM DC"
+      min="5"
+      max="95"
+      oninput="toggleSlider(this)"
+      onchange="toggleSlider(this)"
+      class="range_slider">
+  </div>
+
+  <br /><br /><br /><br />
+
+  <!-- Operating mode & logging  -->
+  <label class="headlabel"> OPERATING MODE </label>
+  <label class="headlabel"> </label>
+  <label class="headlabel"> LOGGING</label><br />
+
+  <br />
+
+  <label class="normallabel" onclick="labelHit(this)" id="mode_label">AUTO</label>
+  <label class="normallabel"></label>
+  <label class="normallabel" onclick="labelHit(this)" id="logging_label">OFF</label>
+
+  <br /><br /><br /><br />
+
+  <label class="tumheadline">Technical University of Munich</label>
+  <br />
+  <label class="chairheadline">Chair of Renewable and Sustainable Energy Systems</label>
+  <br /><br /><br />
+
+  <!-- Zero Calibration Button -->
+  <button id="btnZeroOffsets" class="normallabel" type="button">Zero Sensor Offsets</button>
+  <script>
+    document.getElementById('btnZeroOffsets').addEventListener('click', async () => {
+      const b = document.getElementById('btnZeroOffsets');
+      const old = b.textContent;
+      b.disabled = true;
+      b.textContent = 'Calibrating...';
+      try {
+        await fetch('/calibrate_zero');
+        b.textContent = 'Done!';
+        setTimeout(() => { b.textContent = old; b.disabled = false; }, 1500);
+      } catch (e) {
+        b.textContent = 'Failed';
+        setTimeout(() => { b.textContent = old; b.disabled = false; }, 1500);
+      }
+    });
+  </script>
+
+  <br /><br />
+
+  <!-- IV Curve -->
+  <h4>IV Curve</h4>
+  <button id="ivStartBtn" class="normallabel" type="button">Run IV Sweep</button>
+  <canvas id="ivChart" width="420" height="280"></canvas>
+  <div id="mppInfo" style="margin-top:4px;font-size:12px;"></div>
+  <br /><br />
+</body>
+</html>

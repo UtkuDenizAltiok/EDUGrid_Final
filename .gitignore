@@ -1,0 +1,17 @@
+# PlatformIO build files
+.pio/
+
+# VS Code personal settings (share only if you intend to)
+.vscode/
+
+# Compiled outputs
+*.bin
+*.elf
+*.map
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local env/secrets
+*.env

@@ -1,0 +1,150 @@
+/*************************************************************************
+ * @file edugrid_pwm_control.cpp
+ * @date 2025/08/18
+ ************************************************************************/
+
+#include <Arduino.h>
+#include <edugrid_pwm_control.h>
+#if CONFIG_FREERTOS_UNICORE == 0
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/portmacro.h"
+#endif
+
+/* ===== static storage ===== */
+uint8_t edugrid_pwm_control::pwm_power_converter   = PWM_ABS_INIT; // start safe
+int     edugrid_pwm_control::frequency_power_converter = CONVERTER_FREQUENCY;
+int     edugrid_pwm_control::power_converter_pin   = -1;
+uint8_t edugrid_pwm_control::pwm_abs_min           = PWM_ABS_MIN_MPPT;
+uint8_t edugrid_pwm_control::pwm_abs_max           = PWM_ABS_MAX_MPPT;
+
+const int edugrid_pwm_control::_ledc_channel = 0; // use channel 0
+const int edugrid_pwm_control::_ledc_timer   = 0; // use timer   0
+
+#if CONFIG_FREERTOS_UNICORE == 0
+static portMUX_TYPE s_pwmMux = portMUX_INITIALIZER_UNLOCKED;
+#endif
+
+/* ===== private helpers ===== */
+void edugrid_pwm_control::_applyToHardware(uint8_t pwm_percent)
+{
+    if (pwm_percent > 100) pwm_percent = 100;
+    const uint32_t ticks = (uint32_t)((pwm_percent / 100.0f) * PWM_RESOLUTION_STEPS + 0.5f);
+    ledcWrite(_ledc_channel, ticks);
+}
+
+/* ===== public API ===== */
+void edugrid_pwm_control::initPwmPowerConverter(int freq_hz, int pin)
+{
+    power_converter_pin = pin;
+    frequency_power_converter = freq_hz;
+    const uint8_t resolution_bits = 8;
+    ledcSetup(_ledc_channel, (double)frequency_power_converter, resolution_bits);
+    ledcAttachPin(power_converter_pin, _ledc_channel); // attach ONCE
+    pwm_abs_min = PWM_ABS_MIN_MPPT;
+    pwm_abs_max = PWM_ABS_MAX_MPPT;
+    setPWM(PWM_ABS_INIT, /*auto_mode=*/false);
+}
+
+void edugrid_pwm_control::setPin(int pin)
+{
+    if (pin == power_converter_pin) return;
+    power_converter_pin = pin;
+    ledcAttachPin(power_converter_pin, _ledc_channel);
+    _applyToHardware(pwm_power_converter);
+}
+
+void edugrid_pwm_control::setFrequency(float freq_hz)
+{
+    if (freq_hz <= 0) return;
+    frequency_power_converter = (int)freq_hz;
+
+    // Reconfigure LEDC
+    const uint8_t resolution_bits = 8;
+    ledcSetup(_ledc_channel, (double)frequency_power_converter, resolution_bits);
+
+    // Re-apply current duty
+    _applyToHardware(pwm_power_converter);
+}
+
+float edugrid_pwm_control::getFrequency()
+{
+    return (float)frequency_power_converter;
+}
+
+uint8_t edugrid_pwm_control::getFrequency_kHz()
+{
+    return (uint8_t)((frequency_power_converter + 500) / 1000); // rounded
+}
+
+void edugrid_pwm_control::setPWM(uint8_t pwm_in, bool /*auto_mode*/)
+{
+    if (pwm_in < pwm_abs_min) pwm_in = pwm_abs_min;
+    if (pwm_in > pwm_abs_max) pwm_in = pwm_abs_max;
+#if CONFIG_FREERTOS_UNICORE == 0
+    portENTER_CRITICAL(&s_pwmMux);
+#endif
+    pwm_power_converter = pwm_in;
+    _applyToHardware(pwm_power_converter);
+#if CONFIG_FREERTOS_UNICORE == 0
+    portEXIT_CRITICAL(&s_pwmMux);
+#endif
+}
+
+uint8_t edugrid_pwm_control::getPWM()
+{
+    return pwm_power_converter;
+}
+
+float edugrid_pwm_control::getPWM_normalized()
+{
+    return pwm_power_converter / 100.0f;
+}
+
+void edugrid_pwm_control::pwmIncrementDecrement(int step, bool auto_mode)
+{
+    int val = (int)pwm_power_converter + step;
+    if (val < 0)   val = 0;
+    if (val > 100) val = 100;
+    setPWM((uint8_t)val, auto_mode);
+}
+
+uint8_t edugrid_pwm_control::getPwmLowerLimit()
+{
+    return pwm_abs_min;
+}
+
+uint8_t edugrid_pwm_control::getPwmUpperLimit()
+{
+    return pwm_abs_max;
+}
+
+void edugrid_pwm_control::checkAndSetPwmBorders()
+{
+    // Clamp cached duty to current borders and re-apply if needed
+    uint8_t clamped = pwm_power_converter;
+    if (clamped < pwm_abs_min) clamped = pwm_abs_min;
+    if (clamped > pwm_abs_max) clamped = pwm_abs_max;
+
+    if (clamped != pwm_power_converter) {
+        pwm_power_converter = clamped;
+        _applyToHardware(pwm_power_converter);
+    }
+}
+
+void edugrid_pwm_control::setPWM_ramped(uint8_t target, uint8_t step, uint16_t us_between_steps)
+{
+    if (step == 0) step = 1;
+    if (target < pwm_abs_min) target = pwm_abs_min;
+    if (target > pwm_abs_max) target = pwm_abs_max;
+    uint8_t current = getPWM();
+    if (current == target) return;
+    int dir = (target > current) ? 1 : -1;
+    while (current != target)
+    {
+        int next = (int)current + dir * step;
+        if ((dir > 0 && next > target) || (dir < 0 && next < target)) next = target;
+        setPWM((uint8_t)next, /*auto_mode=*/false);
+        current = (uint8_t)next;
+        if (us_between_steps) delayMicroseconds(us_between_steps);
+    }
+}

@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"tuple": "cpp",
+			"utility": "cpp",
+			"bitset": "cpp",
+			"random": "cpp",
+			"cmath": "cpp"
+		}
+	}
+}

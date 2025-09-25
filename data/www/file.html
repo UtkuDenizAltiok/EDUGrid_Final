@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>TUM EduGrid - Files</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<!-- Begin Webpage -->
+
+<body>
+  <!-- Dynamic text placed by C++ code -->
+
+  <p>Filesystem</p>
+  Free Storage: %FREESPIFFS% | Used Storage: %USEDSPIFFS% | Total Storage: %TOTALSPIFFS%
+
+  <br /><br />
+
+
+  <form method="POST" action="/upload" enctype="multipart/form-data"><input type="file" name="data" /><input
+      type="submit" name="upload" value="Upload" title="Upload File"></form>
+
+  <p>%FILELIST%</p>
+
+  <script>
+
+    function downloadDeleteButton(filename, action) {
+      var filename_complete = filename;
+      var urltocall = "/filehandle?name=" + filename_complete + "&action=" + action;
+      xmlhttp = new XMLHttpRequest();
+      if (action == "delete") {
+        xmlhttp.open("GET", urltocall, false);
+        xmlhttp.send();
+        document.getElementById("status").innerHTML = xmlhttp.responseText;
+        xmlhttp.open("GET", "/listfiles", false);
+        xmlhttp.send();
+        document.getElementById("details").innerHTML = xmlhttp.responseText;
+      }
+      if (action == "download") {
+        // document.getElementById("status").innerHTML = "";
+        window.open(urltocall, "_blank");
+      }
+    }
+
+  </script>
+
+
+</body>
+
+</html>
