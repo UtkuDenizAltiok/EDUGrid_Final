@@ -12,9 +12,6 @@
 #ifndef PV_PRESENT_V
 #define PV_PRESENT_V (1.0f)   // treat system as "off" when raw PV < 1.0 V
 #endif
-#ifndef MEAS_ALPHA
-#define MEAS_ALPHA   (0.15f)  // 0..1, higher => smoother/slower
-#endif
 #ifndef ZERO_V_CLAMP
 #define ZERO_V_CLAMP (0.02f)  // 20 mV deadband
 #endif
@@ -42,9 +39,6 @@ static float _I_in_off  = 0.0f;   // current offset (PV)
 static float _I_out_off = 0.0f;   // current offset (LOAD)
 static float _vin_raw_last = 0.0f;   // raw PV bus (before smoothing), for presence detect
 
-static inline float _lpf(float prev, float now) {
-  return prev + MEAS_ALPHA * (now - prev);
-}
 
 static void _calibrateZeroOffsets(size_t samples,
                                   Adafruit_INA228* ina_pv,   bool ok_pv,

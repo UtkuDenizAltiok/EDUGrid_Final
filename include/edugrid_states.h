@@ -22,10 +22,6 @@
 
 #define PV_PRESENT_V              (1.0f)
 
-/* We use the INA’s built-in averaging (no software EMA for control paths). 
-   Keep MEAS_ALPHA only for UI smoothing if you still want it on the web charts. */
-#define MEAS_ALPHA                (0.15f)    /* UI-only */
-
 #define INA_AVG_SAMPLES           (128UL)    /* AVG = 128 */
 #define INA_CONV_US               (1052UL)   /* 1.052 ms per shunt/bus conversion */
 #define INA_EXTRA_SETTLE_MS       (120UL)    /* extra dwell after duty change */
