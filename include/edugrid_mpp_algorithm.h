@@ -1,8 +1,7 @@
 // File: edugrid_mpp_algorithm.h
 /*************************************************************************
  * @file    edugrid_mpp_algorithm.h
- * @date    2025/08/18 (MODIFIED)
- * @ref     http://ww1.microchip.com/downloads/en/AppNotes/00001521A.pdf
+ * @date    2025/09/25 (SYNCED WITH .CPP)
  ************************************************************************/
 
 #ifndef EDUGRID_MPP_ALGORITHM_H_
@@ -17,13 +16,8 @@
 #include <edugrid_pwm_control.h>
 
 /*************************************************************************
- * Tunables
+ * Operating modes
  ************************************************************************/
-/* Fixed-step Perturb & Observe (P&O) */
-#define MPP_DUTY_STEP              (1)        /* [% duty per P&O cycle]   */
-#define MPP_POWER_DEADBAND_W       (0.08f)    /* [W] ignore tiny changes  */
-
-/* Operating modes */
 enum OperatingModes_t
 {
     MANUALLY = 0,
@@ -32,11 +26,14 @@ enum OperatingModes_t
     _NUM_VALUES
 };
 
-/* Cycle times (microseconds) */
+/*************************************************************************
+ * Cycle times (microseconds)
+ * (Used only for default init; runtime cadence comes from INA_STEP_PERIOD_MS)
+ ************************************************************************/
 struct
 {
     unsigned long NORMAL = 10UL  * 1000UL;
-    unsigned long MPPT   = 500UL * 1000UL;   // 500 ms between P&O steps
+    unsigned long MPPT   = 500UL * 1000UL;   // legacy default
 } CycleTimes_us;
 
 /*************************************************************************
@@ -47,10 +44,11 @@ class edugrid_mpp_algorithm
 public:
     /* ===== MPPT (Perturb & Observe) ===== */
     static int              find_mpp(void);
+    static void             set_step_period_ms(uint32_t ms);
 
     /* ===== IV Sweep ===== */
-    static void             request_iv_sweep();
-    static void             iv_sweep_step(void);
+    static void             request_iv_sweep();   // arm a new sweep
+    static void             iv_sweep_step();      // non-blocking state machine
 
     /* ===== IV Sweep data accessors ===== */
     static bool             iv_sweep_in_progress();
@@ -71,18 +69,17 @@ private:
     static float            _lastPin;
     static int8_t           _dir;
 
-    // MODIFIED: Added declarations for the P&O non-blocking timer
+    // Non-blocking cadence shared by AUTO & IV
     static uint32_t         _mppt_update_period_ms;
     static uint32_t         _last_mppt_update_ms;
 
     /* ---------- IV sweep state machine ---------- */
-    enum class IVPhase : uint8_t { Idle, Settle, Sample, Advance, Done };
+    // Must match the .cpp usage: Idle -> Arm -> WaitAfterSet -> Sample -> Done
+    enum class IVPhase : uint8_t { Idle = 0, Arm, WaitAfterSet, Sample, Done };
     static IVPhase          _iv_phase;
-    static uint16_t         _iv_idx;
-    static uint8_t          _iv_settle_left;
-    static uint8_t          _iv_samples_left;
-    static float            _acc_v, _acc_i;
-    static uint16_t         _iv_count;
+    static uint16_t         _iv_idx;        // current point index
+    static uint16_t         _iv_count;      // number of points captured
+    static uint32_t         _iv_last_ms;    // timing gate (~ INA_STEP_PERIOD_MS)
 
     /* ---------- IV sweep buffers (Vin, Iin) ---------- */
     static float            _iv_v[IV_SWEEP_POINTS];
@@ -91,7 +88,7 @@ private:
     /* ---------- Mode ---------- */
     static OperatingModes_t _mode_state;
 
-    /* ---------- Helpers (defined in .cpp) ---------- */
+    /* ---------- Helpers (optional) ---------- */
     static inline uint8_t   duty_from_index(uint16_t idx)
     {
         return (uint8_t)(IV_SWEEP_D_MIN_PCT + (idx * IV_SWEEP_STEP_PCT));

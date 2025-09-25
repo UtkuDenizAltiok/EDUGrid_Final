@@ -188,7 +188,10 @@ void edugrid_webserver::initWiFi(void)
       } else if (_id.equals(WEBSERVER_ID_PWM_DECREMENT)) {
         edugrid_pwm_control::pwmIncrementDecrement(-5);
       } else if (_id.equals(WEBSERVER_ID_PWM_SLIDER)) {
-        edugrid_pwm_control::setPWM(_state.toInt());
+          edugrid_pwm_control::setPWM_ramped(
+            (uint8_t)_state.toInt(),
+            MANUAL_SLEW_STEP_PCT,
+            MANUAL_SLEW_US_BETWEEN);
       } else if (_id.equals(WEBSERVER_ID_MODE_LABEL)) {
         // Client must send the desired state: "AUTO" or "MANUAL".
         // We do not toggle here. We never enter IV_SWEEP from MODE clicks.

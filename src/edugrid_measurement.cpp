@@ -6,6 +6,7 @@
 
 #include "edugrid_measurement.h"
 #include <math.h>
+#include "edugrid_mpp_algorithm.h" 
 
 /* ===== Tunables (fallbacks if not set elsewhere) ===== */
 #ifndef PV_PRESENT_V
@@ -80,16 +81,21 @@ void edugrid_measurement::init(void) {
 
   if (_ok_pv) {
     _ina_pv.setShunt(INA_SHUNT_OHMS, INA_MAX_CURRENT_A);
-    _ina_pv.setAveragingCount(INA228_COUNT_16);
+    _ina_pv.setAveragingCount(INA228_COUNT_128);          // AVG = 128
     _ina_pv.setVoltageConversionTime(INA228_TIME_1052_us);
     _ina_pv.setCurrentConversionTime(INA228_TIME_1052_us);
+    _ina_pv.setMode(INA228_MODE_CONT_BUS_SHUNT);  // no temperature channel
   }
   if (_ok_load) {
     _ina_load.setShunt(INA_SHUNT_OHMS, INA_MAX_CURRENT_A);
-    _ina_load.setAveragingCount(INA228_COUNT_16);
+    _ina_load.setAveragingCount(INA228_COUNT_128);
     _ina_load.setVoltageConversionTime(INA228_TIME_1052_us);
     _ina_load.setCurrentConversionTime(INA228_TIME_1052_us);
+    _ina_load.setMode(INA228_MODE_CONT_BUS_SHUNT);
   }
+
+  /* After both INAs are configured, tell the MPPT code the shared step period */
+  edugrid_mpp_algorithm::set_step_period_ms(INA_STEP_PERIOD_MS);
 
   // One-time zero-offset capture (do this with PV/LOAD near 0 A for best accuracy)
   _calibrateZeroOffsets(300, &_ina_pv, _ok_pv, &_ina_load, _ok_load);
@@ -153,9 +159,8 @@ void edugrid_measurement::_readINA(void) {
   if (fabsf(iin)  < ZERO_I_CLAMP)  iin  = 0.0f;
   if (fabsf(iout) < ZERO_I_CLAMP)  iout = 0.0f;
 
-  // Light smoothing
-  V_in  = _lpf(V_in,  vin);
-  I_in  = _lpf(I_in,  iin);
-  V_out = _lpf(V_out, vout);
-  I_out = _lpf(I_out, iout);
+  V_in  = vin;
+  I_in  = iin;
+  V_out = vout;
+  I_out = iout;
 }

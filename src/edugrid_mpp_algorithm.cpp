@@ -11,27 +11,29 @@
 
 /* ===== Static storage ===== */
 uint32_t edugrid_mpp_algorithm::_mppt_update_period_ms = CycleTimes_us.MPPT / 1000UL;
-uint32_t edugrid_mpp_algorithm::_last_mppt_update_ms = 0;
+uint32_t edugrid_mpp_algorithm::_last_mppt_update_ms    = 0;
+
+void edugrid_mpp_algorithm::set_step_period_ms(uint32_t ms) {
+  _mppt_update_period_ms = ms;
+}
 
 /* P&O */
-float    edugrid_mpp_algorithm::_lastPin  = 0.0f;
-int8_t   edugrid_mpp_algorithm::_dir      = +1;
+float   edugrid_mpp_algorithm::_lastPin = 0.0f;
+int8_t  edugrid_mpp_algorithm::_dir     = +1;
 
 /* IV sweep */
-edugrid_mpp_algorithm::IVPhase edugrid_mpp_algorithm::_iv_phase       = IVPhase::Idle;
-uint16_t edugrid_mpp_algorithm::_iv_idx                               = 0;
-uint8_t  edugrid_mpp_algorithm::_iv_settle_left                       = 0;
-uint8_t  edugrid_mpp_algorithm::_iv_samples_left                      = 0;
-float    edugrid_mpp_algorithm::_acc_v                                = 0.0f;
-float    edugrid_mpp_algorithm::_acc_i                                = 0.0f; // Corrected the typo here
-uint16_t edugrid_mpp_algorithm::_iv_count                             = 0;
+edugrid_mpp_algorithm::IVPhase edugrid_mpp_algorithm::_iv_phase = IVPhase::Idle;
+uint16_t edugrid_mpp_algorithm::_iv_idx   = 0;
+uint16_t edugrid_mpp_algorithm::_iv_count = 0;
+uint32_t edugrid_mpp_algorithm::_iv_last_ms = 0;
 
 /* IV buffers */
-float    edugrid_mpp_algorithm::_iv_v[IV_SWEEP_POINTS] = {0};
-float    edugrid_mpp_algorithm::_iv_i[IV_SWEEP_POINTS] = {0};
+float edugrid_mpp_algorithm::_iv_v[IV_SWEEP_POINTS] = {0};
+float edugrid_mpp_algorithm::_iv_i[IV_SWEEP_POINTS] = {0};
 
 /* Mode */
 OperatingModes_t edugrid_mpp_algorithm::_mode_state = MANUALLY;
+
 
 /* ===== Public API ===== */
 OperatingModes_t edugrid_mpp_algorithm::get_mode_state(void)
@@ -57,112 +59,80 @@ void edugrid_mpp_algorithm::toggle_mode_state(void)
 
 int edugrid_mpp_algorithm::find_mpp(void)
 {
-    if (millis() - _last_mppt_update_ms < _mppt_update_period_ms) {
-        return 0;
-    }
-    _last_mppt_update_ms = millis();
+  const uint32_t now = millis();
+  if ((now - _last_mppt_update_ms) < _mppt_update_period_ms) {
+    return 0; // wait until INA average+settle window has passed
+  }
+  _last_mppt_update_ms = now;
 
-    const float Pin = edugrid_measurement::P_in;
-    if (edugrid_measurement::V_in < PV_PRESENT_V) {
-        _lastPin = 0.0f;
-        return 0;
-    }
+  const float Pin = edugrid_measurement::P_in;
+  const float dP  = Pin - _lastPin;
+  _lastPin = Pin;
 
-    const float dP = Pin - _lastPin;
+  // Fixed ±1% step, reverse direction when power drops (classic P&O)
+  if (fabsf(dP) < MPP_POWER_EPS_W) {
+    // tiny change: keep going same way
+  } else if (dP < 0.0f) {
+    _dir = -_dir; // power decreased ⇒ flip direction
+  }
 
-    if (fabsf(dP) > MPP_POWER_DEADBAND_W) {
-        if (dP < 0.0f) {
-            _dir = -_dir;
-        }
-    }
-    
-    int current_pwm = edugrid_pwm_control::getPWM();
-    int next_pwm = current_pwm + (_dir * MPP_DUTY_STEP);
-
-    if (next_pwm < edugrid_pwm_control::getPwmLowerLimit()) {
-        next_pwm = edugrid_pwm_control::getPwmLowerLimit();
-    }
-    if (next_pwm > edugrid_pwm_control::getPwmUpperLimit()) {
-        next_pwm = edugrid_pwm_control::getPwmUpperLimit();
-    }
-    
-    edugrid_pwm_control::setPWM((uint8_t)next_pwm, /*auto_mode=*/true);
-    _lastPin = Pin;
-    return 0;
+  edugrid_pwm_control::pwmIncrementDecrement((_dir >= 0) ? +MPPT_DUTY_STEP_PCT : -MPPT_DUTY_STEP_PCT);
+  return 0;
 }
+
 
 
 /* ========================= IV SWEEP ========================= */
 
 void edugrid_mpp_algorithm::request_iv_sweep()
 {
-    _iv_count        = 0;
-    _iv_idx          = 0;
-    _acc_v           = 0.0f;
-    _acc_i           = 0.0f;
-    _iv_settle_left  = IV_SETTLE_CYCLES;
-    _iv_samples_left = IV_SAMPLES_PER_POINT;
-    
-    const uint8_t startDuty = duty_from_index(0);
-    edugrid_pwm_control::setPWM(startDuty, /*auto_mode=*/false);
-
-    _iv_phase = IVPhase::Settle;
-    set_mode_state(IV_SWEEP);
+  _iv_phase    = IVPhase::Arm;
+  _iv_idx    = 0;
+  _iv_count    = 0;
+  _iv_last_ms  = 0;
 }
 
 
 void edugrid_mpp_algorithm::iv_sweep_step(void)
 {
-    switch (_iv_phase)
-    {
-    case IVPhase::Idle:
-        return;
+  const uint32_t now = millis();
+  if ((now - _iv_last_ms) < _mppt_update_period_ms) {
+    return;  // enforce one action per INA averaging window
+  }
+  _iv_last_ms = now;
 
-    case IVPhase::Settle:
-        if (_iv_settle_left > 0) {
-            _iv_settle_left--;
-            return;
-        }
-        _acc_v = 0.0f; _acc_i = 0.0f;
-        _iv_samples_left = IV_SAMPLES_PER_POINT;
-        _iv_phase = IVPhase::Sample;
-        return; // prevent fall-through to keep scopes simple
+  switch (_iv_phase)
+  {
+    case IVPhase::Arm:
+      edugrid_pwm_control::setPWM(IV_SWEEP_D_MIN_PCT);
+      _iv_phase = IVPhase::WaitAfterSet;   // allow settle+averaging before reading
+      break;
+
+    case IVPhase::WaitAfterSet:
+      _iv_phase = IVPhase::Sample;         // a full period just elapsed
+      break;
 
     case IVPhase::Sample:
-        _acc_v += edugrid_measurement::V_in;
-        _acc_i += edugrid_measurement::I_in;
-        if (--_iv_samples_left > 0) {
-            return;
-        }
-        if (_iv_count < IV_SWEEP_POINTS) {
-            _iv_v[_iv_count] = _acc_v / (float)IV_SAMPLES_PER_POINT;
-            _iv_i[_iv_count] = _acc_i / (float)IV_SAMPLES_PER_POINT;
-            _iv_count++;
-        }
-        _iv_phase = IVPhase::Advance;
-        return;
-
-    case IVPhase::Advance: {              // <-- scoped block fixes the error
+      // Store a single averaged point (V_in, I_in) at current duty
+      if (_iv_idx < IV_SWEEP_POINTS) {
+        _iv_v[_iv_idx] = edugrid_measurement::V_in;
+        _iv_i[_iv_idx] = edugrid_measurement::I_in;
+        _iv_count = _iv_idx + 1;
+      }
+      // Decide next step
+      if (edugrid_pwm_control::getPWM() >= IV_SWEEP_D_MAX_PCT || _iv_idx + 1 >= IV_SWEEP_POINTS) {
+        _iv_phase = IVPhase::Done;
+      } else {
         _iv_idx++;
-
-        if (_iv_idx >= IV_SWEEP_POINTS) {
-            const uint8_t finalDuty = IV_SWEEP_D_MAX_PCT;
-            edugrid_pwm_control::setPWM(finalDuty, /*auto_mode=*/false);
-            set_mode_state(MANUALLY);
-            _iv_phase = IVPhase::Done;
-            return;
-        }
-
-        const uint8_t nextDuty = duty_from_index(_iv_idx);
-        edugrid_pwm_control::setPWM(nextDuty, /*auto_mode=*/false);
-        _iv_settle_left  = IV_SETTLE_CYCLES;
-        _iv_phase        = IVPhase::Settle;
-        return;
-    }
+        edugrid_pwm_control::pwmIncrementDecrement(+IV_SWEEP_STEP_PCT);
+        _iv_phase = IVPhase::WaitAfterSet;
+      }
+      break;
 
     case IVPhase::Done:
-        return;
-    }
+    default:
+      break;  // no-op; caller can query iv_sweep_done()
+  }
 }
 
 
