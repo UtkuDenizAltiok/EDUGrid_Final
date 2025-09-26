@@ -89,7 +89,7 @@
  * Manual mode slew limiting (UI slider)
  ************************************************************************/
 #define MANUAL_SLEW_STEP_PCT      (1)        /* 1% per ramp step */
-#define MANUAL_SLEW_INTERVAL_MS   (40)       /* 40 ms between steps */
+#define MANUAL_SLEW_INTERVAL_MS   (20)       /* 40 ms between steps */
 
 /*************************************************************************
  * Filesystem states (unchanged)
