@@ -53,7 +53,6 @@ public:
     static void initWiFi(void);
     static void webSocketLoop(void);
     static String humanReadableSize(const size_t bytes);
-    static StaticJsonDocument<1024> doc;
 
 private:
     static String processor(const String &var);
@@ -62,7 +61,6 @@ private:
     static String listFiles(bool ishtml);
     static String _id;
     static String _state;
-    static String JSON_str;
 };
 
 #endif /* EDUGRID_WEBSERVER_H_ */

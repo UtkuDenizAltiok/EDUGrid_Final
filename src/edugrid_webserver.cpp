@@ -17,8 +17,6 @@
  ************************************************************************/
 String edugrid_webserver::_id = "";
 String edugrid_webserver::_state = "";
-String edugrid_webserver::JSON_str = "";
-StaticJsonDocument<1024> edugrid_webserver::doc;
 
 /* Web servers */
 WebSocketsServer webSocket(81);   // matches script.js ws://<host>:81/
@@ -27,10 +25,6 @@ AsyncWebServer   server(80);
 /* Query parameter keys */
 static const char *PARAM_INPUT_1 = "ID";
 static const char *PARAM_INPUT_2 = "STATE";
-
-namespace {
-constexpr size_t kIvJsonCapacity = JSON_OBJECT_SIZE(5) + (3 * JSON_ARRAY_SIZE(IV_SWEEP_POINTS));
-}
 
 /*************************************************************************
  * Helpers
@@ -72,9 +66,6 @@ void edugrid_webserver::initWiFi(void)
 
   /* WebSocket server (port 81) */
   webSocket.begin();
-
-  /* Pre-reserve JSON string buffer */
-  JSON_str.reserve(512);
 
   /* HTTP routes */
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -277,13 +268,16 @@ void edugrid_webserver::webSocketLoop(void)
   lastPush = now;
 
   // Build a fresh doc each tick to avoid cross-tick reuse issues
-  StaticJsonDocument< JSON_OBJECT_SIZE(16) > doc;
+  StaticJsonDocument< JSON_OBJECT_SIZE(20) > doc;
 
   // --- Converter / PWM (numeric; add units in JS to reduce payload) ---
-  doc["pwm"]       = edugrid_pwm_control::getPWM();             // percent (0..100)
+  const uint8_t pwm_pct = edugrid_pwm_control::getPWM();
+  doc["pwm"]       = pwm_pct;                                   // percent (0..100)
+  doc["pwm_raw"]   = pwm_pct;                                   // legacy key kept for JS compatibility
   doc["pwm_min"]   = edugrid_pwm_control::getPwmLowerLimit();   // percent
   doc["pwm_max"]   = edugrid_pwm_control::getPwmUpperLimit();   // percent
-  doc["freq_khz"]  = edugrid_pwm_control::getFrequency_kHz();   // kHz number
+  const float freq_hz = edugrid_pwm_control::getFrequency();
+  doc["freq_hz"]   = freq_hz;
 
   // --- Mode as string the UI expects ---
   switch (edugrid_mpp_algorithm::get_mode_state()) {

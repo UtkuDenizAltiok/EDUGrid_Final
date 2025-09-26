@@ -76,15 +76,26 @@ function connectWS() {
       const fmtPct = x => Number.isFinite(x) ? x.toFixed(1) + " %" : "--";
 
       // ---------- PWM / Frequency ----------
-      if (el("pwm_label")) setText("pwm_label", j.pwm ?? "--");
-      if (el("freq_label")) setText("freq_label", j.freq ?? "--");
+      const pwmValue = Number(j.pwm);
+      if (el("pwm_label")) {
+        setText("pwm_label", Number.isFinite(pwmValue) ? pwmValue.toFixed(0) + " %" : "--");
+      }
+
+      const freqHz  = Number(j.freq_hz);
+      if (el("freq_label")) {
+        if (Number.isFinite(freqHz)) {
+          const freqDisplay = freqHz >= 100 ? freqHz.toFixed(0) : freqHz.toFixed(1);
+          setText("freq_label", freqDisplay + " Hz");
+        } else {
+          setText("freq_label", "--");
+        }
+      }
 
       const slider = el("4");
-      const pwmRaw = Number(j.pwm_raw);
       if (slider) {
         if (j.pwm_min !== undefined) slider.min = j.pwm_min;
         if (j.pwm_max !== undefined) slider.max = j.pwm_max;
-        if (!isDraggingSlider && Number.isFinite(pwmRaw)) slider.value = pwmRaw;
+        if (!isDraggingSlider && Number.isFinite(pwmValue)) slider.value = pwmValue;
       }
 
       // ---------- MODE label ----------

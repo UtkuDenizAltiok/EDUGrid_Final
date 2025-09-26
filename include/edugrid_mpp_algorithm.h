@@ -81,6 +81,7 @@ private:
     static uint16_t         _iv_idx;        // current point index
     static uint16_t         _iv_count;      // number of points captured
     static uint32_t         _iv_last_ms;    // timing gate (~ INA_STEP_PERIOD_MS)
+    static bool             _iv_finalize_applied;
 
     /* ---------- IV sweep buffers (Vin, Iin) ---------- */
     static float            _iv_v[IV_SWEEP_POINTS];
