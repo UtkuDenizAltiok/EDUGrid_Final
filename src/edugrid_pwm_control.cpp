@@ -5,6 +5,7 @@
 
 #include <Arduino.h>
 #include <edugrid_pwm_control.h>
+#include <edugrid_mpp_algorithm.h>
 #if CONFIG_FREERTOS_UNICORE == 0
   #include "freertos/FreeRTOS.h"
   #include "freertos/portmacro.h"
@@ -16,6 +17,8 @@ int     edugrid_pwm_control::frequency_power_converter = CONVERTER_FREQUENCY;
 int     edugrid_pwm_control::power_converter_pin   = -1;
 uint8_t edugrid_pwm_control::pwm_abs_min           = PWM_ABS_MIN_MPPT;
 uint8_t edugrid_pwm_control::pwm_abs_max           = PWM_ABS_MAX_MPPT;
+uint8_t edugrid_pwm_control::manual_target         = PWM_ABS_INIT;
+uint32_t edugrid_pwm_control::manual_last_step_ms  = 0;
 
 const int edugrid_pwm_control::_ledc_channel = 0; // use channel 0
 const int edugrid_pwm_control::_ledc_timer   = 0; // use timer   0
@@ -100,12 +103,63 @@ float edugrid_pwm_control::getPWM_normalized()
     return pwm_power_converter / 100.0f;
 }
 
+void edugrid_pwm_control::requestManualTarget(uint8_t target)
+{
+    if (target < pwm_abs_min) target = pwm_abs_min;
+    if (target > pwm_abs_max) target = pwm_abs_max;
+    manual_target = target;
+    manual_last_step_ms = millis() - MANUAL_SLEW_INTERVAL_MS;
+}
+
+void edugrid_pwm_control::serviceManualRamp()
+{
+    const OperatingModes_t mode = edugrid_mpp_algorithm::get_mode_state();
+    const uint32_t now = millis();
+
+    if (mode != MANUALLY) {
+        manual_target = pwm_power_converter;
+        manual_last_step_ms = now;
+        return;
+    }
+
+    if (manual_target == pwm_power_converter) {
+        return;
+    }
+
+    if ((now - manual_last_step_ms) < MANUAL_SLEW_INTERVAL_MS) {
+        return;
+    }
+
+    manual_last_step_ms = now;
+
+    int current = pwm_power_converter;
+    const int target = manual_target;
+    const int diff = target - current;
+
+    if (diff > 0) {
+        current += MANUAL_SLEW_STEP_PCT;
+        if (current > target) {
+            current = target;
+        }
+    } else {
+        current -= MANUAL_SLEW_STEP_PCT;
+        if (current < target) {
+            current = target;
+        }
+    }
+
+    setPWM(static_cast<uint8_t>(current), /*auto_mode=*/false);
+}
+
 void edugrid_pwm_control::pwmIncrementDecrement(int step, bool auto_mode)
 {
     int val = (int)pwm_power_converter + step;
     if (val < 0)   val = 0;
     if (val > 100) val = 100;
     setPWM((uint8_t)val, auto_mode);
+    // Align manual ramp state with the new duty to avoid fighting external updates
+    manual_target = pwm_power_converter;
+    manual_last_step_ms = millis();
 }
 
 uint8_t edugrid_pwm_control::getPwmLowerLimit()
@@ -131,20 +185,3 @@ void edugrid_pwm_control::checkAndSetPwmBorders()
     }
 }
 
-void edugrid_pwm_control::setPWM_ramped(uint8_t target, uint8_t step, uint16_t us_between_steps)
-{
-    if (step == 0) step = 1;
-    if (target < pwm_abs_min) target = pwm_abs_min;
-    if (target > pwm_abs_max) target = pwm_abs_max;
-    uint8_t current = getPWM();
-    if (current == target) return;
-    int dir = (target > current) ? 1 : -1;
-    while (current != target)
-    {
-        int next = (int)current + dir * step;
-        if ((dir > 0 && next > target) || (dir < 0 && next < target)) next = target;
-        setPWM((uint8_t)next, /*auto_mode=*/false);
-        current = (uint8_t)next;
-        if (us_between_steps) delayMicroseconds(us_between_steps);
-    }
-}

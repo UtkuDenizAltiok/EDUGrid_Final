@@ -32,9 +32,10 @@ class edugrid_pwm_control
 public:
     /* Percent-based API (0..100 %) */
     static void     setPWM(uint8_t pwm_in, bool auto_mode = false);
-    static void     setPWM_ramped(uint8_t target, uint8_t step = 2, uint16_t us_between_steps = 200);
     static uint8_t  getPWM();                  // 0..100 [%]
     static float    getPWM_normalized();       // 0.0..1.0
+    static void     requestManualTarget(uint8_t target);
+    static void     serviceManualRamp();
 
     /* Frequency API */
     static void     setFrequency(float freq_hz);   // reconfigure LEDC timer
@@ -62,6 +63,8 @@ private:
     static int      power_converter_pin;      // GPIO
     static uint8_t  pwm_abs_min;              // [%]
     static uint8_t  pwm_abs_max;              // [%]
+    static uint8_t  manual_target;            // [%]
+    static uint32_t manual_last_step_ms;      // [ms]
 
     /* LEDC config */
     static const int _ledc_channel;           // LEDC channel used
