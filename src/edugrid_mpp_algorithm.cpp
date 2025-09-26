@@ -26,6 +26,7 @@ edugrid_mpp_algorithm::IVPhase edugrid_mpp_algorithm::_iv_phase = IVPhase::Idle;
 uint16_t edugrid_mpp_algorithm::_iv_idx   = 0;
 uint16_t edugrid_mpp_algorithm::_iv_count = 0;
 uint32_t edugrid_mpp_algorithm::_iv_last_ms = 0;
+bool edugrid_mpp_algorithm::_iv_finalize_applied = false;
 
 /* IV buffers */
 float edugrid_mpp_algorithm::_iv_v[IV_SWEEP_POINTS] = {0};
@@ -87,6 +88,8 @@ int edugrid_mpp_algorithm::find_mpp(void)
 
 void edugrid_mpp_algorithm::request_iv_sweep()
 {
+  _iv_finalize_applied = false;
+  set_mode_state(IV_SWEEP);
   _iv_phase    = IVPhase::Arm;
   _iv_idx    = 0;
   _iv_count    = 0;
@@ -132,6 +135,12 @@ void edugrid_mpp_algorithm::iv_sweep_step(void)
 
     case IVPhase::Done:
     default:
+      if (!_iv_finalize_applied) {
+        _iv_finalize_applied = true;
+        edugrid_pwm_control::setPWM(PWM_MAX_DUTY_PCT);
+        edugrid_pwm_control::requestManualTarget(PWM_MAX_DUTY_PCT);
+        set_mode_state(MANUALLY);
+      }
       break;  // no-op; caller can query iv_sweep_done()
   }
 }
