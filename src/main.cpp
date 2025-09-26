@@ -59,6 +59,7 @@ void coreThree(void *pvParameters)
 
     /* 2) Keep duty within safe/allowed borders (this is good practice) */
     edugrid_pwm_control::checkAndSetPwmBorders();
+    edugrid_pwm_control::serviceManualRamp();
 
     /* 3) Execute the logic for the current operating mode */
     switch (edugrid_mpp_algorithm::get_mode_state())
