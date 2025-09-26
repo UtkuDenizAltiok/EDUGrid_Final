@@ -30,11 +30,12 @@ enum OperatingModes_t
  * Cycle times (microseconds)
  * (Used only for default init; runtime cadence comes from INA_STEP_PERIOD_MS)
  ************************************************************************/
-struct
+struct CycleTimesUs
 {
-    unsigned long NORMAL = 10UL  * 1000UL;
-    unsigned long MPPT   = 500UL * 1000UL;   // legacy default
-} CycleTimes_us;
+    unsigned long NORMAL;
+    unsigned long MPPT;
+};
+inline constexpr CycleTimesUs CycleTimes_us{10UL * 1000UL, 500UL * 1000UL};  // legacy default
 
 /*************************************************************************
  * Class
