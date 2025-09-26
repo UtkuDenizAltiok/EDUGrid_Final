@@ -22,9 +22,6 @@
 #define CONFIG_FILEPATH_SSID                        ("/config/ssid.config")
 #define CONFIG_FILEPATH_PW                          ("/config/password.config")
 #define CONFIG_FILEPATH_LOGNAME                     ("/config/logname.config")
-#define CONFIG_FILEPATH_TRIAC                       ("/config/triac.config")
-#define CONFIG_FILEPATH_TRIAC_PIN_ZEROCROSSING      ("/config/pin_zerocrossing.config")
-#define CONFIG_FILEPATH_TRIAC_PIN_CONTROL           ("/config/pin_triaccontrol.config")
 
 
 /*************************************************************************
@@ -48,7 +45,6 @@ public:
     static String config_wlan_ssid;
     static String config_wlan_pw;
     static String config_log_name;
-    static String config_triac_state;
 
 protected:
     static File open_file;
