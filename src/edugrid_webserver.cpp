@@ -7,6 +7,7 @@
  * Includes
  ************************************************************************/
 #include <LittleFS.h>
+#include <math.h>
 #include <edugrid_webserver.h>
 #include "edugrid_mpp_algorithm.h"
 #include "edugrid_measurement.h"
@@ -16,10 +17,7 @@
  ************************************************************************/
 String edugrid_webserver::_id = "";
 String edugrid_webserver::_state = "";
-String edugrid_webserver::_state2 = "";
 String edugrid_webserver::JSON_str = "";
-String edugrid_webserver::wifi_name = "";
-String edugrid_webserver::wifi_password = "";
 StaticJsonDocument<1024> edugrid_webserver::doc;
 
 /* Web servers */
@@ -29,7 +27,10 @@ AsyncWebServer   server(80);
 /* Query parameter keys */
 static const char *PARAM_INPUT_1 = "ID";
 static const char *PARAM_INPUT_2 = "STATE";
-static const char *PARAM_INPUT_3 = "STATE2";
+
+namespace {
+constexpr size_t kIvJsonCapacity = JSON_OBJECT_SIZE(5) + (3 * JSON_ARRAY_SIZE(IV_SWEEP_POINTS));
+}
 
 /*************************************************************************
  * Helpers
@@ -110,29 +111,24 @@ void edugrid_webserver::initWiFi(void)
   // === MODIFIED: Replaced String concatenation with ArduinoJson for performance ===
   server.on("/ivsweep/data", HTTP_GET, [](AsyncWebServerRequest *request){
     const uint16_t n = edugrid_mpp_algorithm::iv_point_count();
-    
-    // Create a JSON document. Adjust size if you have more than ~100 points.
-    DynamicJsonDocument doc(4096);
 
-    // Create the arrays in the JSON object
+    StaticJsonDocument<kIvJsonCapacity> doc;
     JsonArray v_data = doc.createNestedArray("v");
     JsonArray i_data = doc.createNestedArray("i");
     JsonArray p_data = doc.createNestedArray("p");
 
-    // Populate the arrays with data from the algorithm module
     for (uint16_t i = 0; i < n; ++i) {
       float v, cur;
       edugrid_mpp_algorithm::iv_get_point(i, v, cur);
-      v_data.add(round(v * 1000.0) / 1000.0);       // 3 decimal places
-      i_data.add(round(cur * 1000.0) / 1000.0);     // 3 decimal places
-      p_data.add(round(v * cur * 1000.0) / 1000.0); // 3 decimal places
+      const float p = v * cur;
+      v_data.add(roundf(v * 1000.0f) / 1000.0f);
+      i_data.add(roundf(cur * 1000.0f) / 1000.0f);
+      p_data.add(roundf(p * 1000.0f) / 1000.0f);
     }
-    
-    // Add the status flags
+
     doc["in_progress"] = edugrid_mpp_algorithm::iv_sweep_in_progress();
-    doc["done"] = edugrid_mpp_algorithm::iv_sweep_done();
-    
-    // Serialize the JSON to a String and send it
+    doc["done"]        = edugrid_mpp_algorithm::iv_sweep_done();
+
     String out;
     serializeJson(doc, out);
     request->send(200, "application/json", out);
@@ -266,10 +262,8 @@ void edugrid_webserver::webSocketLoop(void)
   webSocket.loop();
 
   static uint32_t lastPush = 0;
-  const uint32_t PUSH_EVERY_MS = 100; // 10 Hz is plenty
-
   uint32_t now = millis();
-  if (now - lastPush < PUSH_EVERY_MS) return;
+  if (now - lastPush < WS_PUSH_INTERVAL_MS) return;
   lastPush = now;
 
   /* PWM / converter */

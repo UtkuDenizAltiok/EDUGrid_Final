@@ -35,12 +35,11 @@ public:
     static void activateLogging();
     static void deactivateLogging();
     static void toggleLogging();
-    static void appendLog(String field0, String field1, String field2, String field3);
+    static void appendLog(float vin, float vout, float iin, float iout);
 
 private:
     static bool log_active;
     static bool safe_request;
-    static String log_line;
     static String log_message_buffer;
     static uint8_t log_message_counter;
     static unsigned long all_messages;

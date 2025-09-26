@@ -8,17 +8,6 @@
 #include <math.h>
 #include "edugrid_mpp_algorithm.h" 
 
-/* ===== Tunables (fallbacks if not set elsewhere) ===== */
-#ifndef PV_PRESENT_V
-#define PV_PRESENT_V (1.0f)   // treat system as "off" when raw PV < 1.0 V
-#endif
-#ifndef ZERO_V_CLAMP
-#define ZERO_V_CLAMP (0.02f)  // 20 mV deadband
-#endif
-#ifndef ZERO_I_CLAMP
-#define ZERO_I_CLAMP (0.01f)  // 10 mA deadband
-#endif
-
 /* ===== Static storage ===== */
 Adafruit_INA228 edugrid_measurement::_ina_pv;
 Adafruit_INA228 edugrid_measurement::_ina_load;

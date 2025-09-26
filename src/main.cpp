@@ -22,11 +22,6 @@
 /************************************************************************
  * Defines
  ************************************************************************/
-#define BAUD_RATE (115200)
-#define CYCLE_TIME_TASK_LOOP_MS      (1000)   // [ms]  Display & Logging
-#define CYCLE_TIME_TASK_WEBSOCKET_MS (100)    // [ms]  WebSocket tick
-#define CYCLE_TIME_TASK_CONTROL_MS   (20)     // [ms]  How often the control task runs (50 Hz)
-
 /************************************************************************
  * RTOS Task Handles
  ************************************************************************/
@@ -42,7 +37,7 @@ void coreTwo(void *pvParameters)
   for (;;)
   {
     edugrid_webserver::webSocketLoop();
-    vTaskDelay(pdMS_TO_TICKS(CYCLE_TIME_TASK_WEBSOCKET_MS));
+    vTaskDelay(pdMS_TO_TICKS(TASK_WEBSOCKET_INTERVAL_MS));
   }
 }
 
@@ -88,7 +83,7 @@ void coreThree(void *pvParameters)
     /* 4) Loop timing */
     // Use a single, consistent delay for the whole task.
     // This makes the loop predictable and responsive.
-    vTaskDelay(pdMS_TO_TICKS(CYCLE_TIME_TASK_CONTROL_MS));
+    vTaskDelay(pdMS_TO_TICKS(TASK_CONTROL_INTERVAL_MS));
   }
 }
 
@@ -99,7 +94,7 @@ void coreThree(void *pvParameters)
 void setup()
 {
   /* Serial — start this FIRST so we see all boot logs */
-  Serial.begin(BAUD_RATE);
+  Serial.begin(EDUGRID_SERIAL_BAUD);
   delay(200);
   Serial.println();
   Serial.println(F("[BOOT] EduGrid starting..."));
@@ -167,10 +162,10 @@ void setup()
 void loop()
 {
   edugrid_logging::appendLog(
-      String(edugrid_measurement::V_in),
-      String(edugrid_measurement::V_out),
-      String(edugrid_measurement::I_in),
-      String(edugrid_measurement::I_out));
+      edugrid_measurement::V_in,
+      edugrid_measurement::V_out,
+      edugrid_measurement::I_in,
+      edugrid_measurement::I_out);
 
-  delay(CYCLE_TIME_TASK_LOOP_MS);
+  delay(TASK_LOOP_INTERVAL_MS);
 }

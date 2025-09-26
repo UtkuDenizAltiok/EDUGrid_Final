@@ -60,14 +60,9 @@ private:
     static void handleUpload(AsyncWebServerRequest* request, String filename,
                          size_t index, uint8_t* data, size_t len, bool final);
     static String listFiles(bool ishtml);
-    static void setWiFiCredentials(String ssid, String pw);
-
     static String _id;
     static String _state;
-    static String _state2;
     static String JSON_str;
-    static String wifi_name;
-    static String wifi_password;
 };
 
 #endif /* EDUGRID_WEBSERVER_H_ */

@@ -18,7 +18,6 @@
  ************************************************************************/
 bool edugrid_logging::log_active = false;
 bool edugrid_logging::safe_request = false;
-String edugrid_logging::log_line = "";
 String edugrid_logging::log_message_buffer = "";
 uint8_t edugrid_logging::log_message_counter = 0;
 unsigned long edugrid_logging::log_start_time = 0;
@@ -49,6 +48,8 @@ void edugrid_logging::activateLogging()
 {
   log_active = true;
   log_start_time = millis();
+  log_message_buffer = "";
+  log_message_buffer.reserve(EDUGRID_LOGGING_MAX_MESSAGES_IN_BUFFER * 48);
   /* Clear log file content */
   edugrid_filesystem::writeContent_str(edugrid_filesystem::config_log_name, "");
   Serial.print("| OK | Logging  ");
@@ -83,25 +84,28 @@ void edugrid_logging::toggleLogging()
   }
 }
 
-void edugrid_logging::appendLog(String field0, String field1, String field2, String field3)
+void edugrid_logging::appendLog(float vin, float vout, float iin, float iout)
 {
   /* Log only, if activated */
   if (getLogState() == EDUGRID_LOGGING_ACTIVE)
   {
     log_message_counter += 1;
     all_messages += 1;
-    log_line =
-        (String)all_messages + EDUGRID_LOGGING_CSV_DELIMITER +
-        field0 + EDUGRID_LOGGING_CSV_DELIMITER +
-        field1 + EDUGRID_LOGGING_CSV_DELIMITER +
-        field2 + EDUGRID_LOGGING_CSV_DELIMITER +
-        field3 + "\n";
+    String line;
+    line.reserve(64);
+    line += all_messages;
+    line += EDUGRID_LOGGING_CSV_DELIMITER;
+    line += String(vin, 3);
+    line += EDUGRID_LOGGING_CSV_DELIMITER;
+    line += String(vout, 3);
+    line += EDUGRID_LOGGING_CSV_DELIMITER;
+    line += String(iin, 3);
+    line += EDUGRID_LOGGING_CSV_DELIMITER;
+    line += String(iout, 3);
+    line += '\n';
 
     /* add new log line to buffer String */
-    log_message_buffer += log_line;
-
-    /* Clear log_line */
-    log_line = "";
+    log_message_buffer += line;
 
     /* Check for logging timeout*/
     if ((millis() - log_start_time) >= EDUGRID_LOGGING_MAX_TIME_MS)
