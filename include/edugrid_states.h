@@ -13,6 +13,15 @@
 #define OTA_UPDATES_ENABLE
 
 /*************************************************************************
+ * Core runtime cadence & serial link
+ ************************************************************************/
+#define EDUGRID_SERIAL_BAUD          (115200UL)
+#define TASK_LOOP_INTERVAL_MS        (1000UL)   /* loop() logging tick */
+#define TASK_WEBSOCKET_INTERVAL_MS   (100UL)    /* WebSocket pump task */
+#define TASK_CONTROL_INTERVAL_MS     (20UL)     /* MPPT + sensing task */
+#define WS_PUSH_INTERVAL_MS          (100UL)    /* WebSocket broadcast cadence */
+
+/*************************************************************************
  * INA228 configuration (shared by AUTO & IV)
  ************************************************************************/
 #define INA_PV_ADDR               (0x40)
@@ -21,6 +30,8 @@
 #define INA_MAX_CURRENT_A         (16.0f)   /* set to your HW limit */
 
 #define PV_PRESENT_V              (1.0f)
+#define ZERO_V_CLAMP              (0.02f)
+#define ZERO_I_CLAMP              (0.01f)
 
 #define INA_AVG_SAMPLES           (128UL)    /* AVG = 128 */
 #define INA_CONV_US               (1052UL)   /* 1.052 ms per shunt/bus conversion */
@@ -65,13 +76,13 @@
 
 /* Compile-time sanity checks */
 #if (IV_SWEEP_D_MIN_PCT < PWM_MIN_DUTY_PCT) || (IV_SWEEP_D_MAX_PCT > PWM_MAX_DUTY_PCT)
-# error "IV sweep bounds must lie within PWM_MIN_DUTY_PCT..PWM_MAX_DUTY_PCT"
+#error "IV sweep bounds must lie within PWM_MIN_DUTY_PCT..PWM_MAX_DUTY_PCT"
 #endif
 #if (IV_SWEEP_D_MIN_PCT > IV_SWEEP_D_MAX_PCT)
-# error "IV_SWEEP_D_MIN_PCT must be <= IV_SWEEP_D_MAX_PCT"
+#error "IV_SWEEP_D_MIN_PCT must be <= IV_SWEEP_D_MAX_PCT"
 #endif
 #if ((IV_SWEEP_D_MAX_PCT - IV_SWEEP_D_MIN_PCT) % IV_SWEEP_STEP_PCT) != 0
-# error "Sweep range must be divisible by IV_SWEEP_STEP_PCT"
+#error "Sweep range must be divisible by IV_SWEEP_STEP_PCT"
 #endif
 
 /*************************************************************************
