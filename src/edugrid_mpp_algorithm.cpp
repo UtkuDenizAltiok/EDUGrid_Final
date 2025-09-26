@@ -44,10 +44,11 @@ OperatingModes_t edugrid_mpp_algorithm::get_mode_state(void)
 void edugrid_mpp_algorithm::set_mode_state(OperatingModes_t mode)
 {
     _mode_state = mode;
-    if (mode == AUTO)
-    {
-        _dir = +1;
-    }
+  // Reset P&O direction and last power when entering AUTO
+  if (mode == AUTO) {
+    _dir = +1;
+    _lastPin = edugrid_measurement::P_in;
+  }
 }
 
 void edugrid_mpp_algorithm::toggle_mode_state(void)

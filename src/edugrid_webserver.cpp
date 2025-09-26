@@ -108,31 +108,40 @@ void edugrid_webserver::initWiFi(void)
     request->send(200, "application/json", "{\"status\":\"started\"}");
   });
 
-  // === MODIFIED: Replaced String concatenation with ArduinoJson for performance ===
-  server.on("/ivsweep/data", HTTP_GET, [](AsyncWebServerRequest *request){
-    const uint16_t n = edugrid_mpp_algorithm::iv_point_count();
+// === Fast, heap-safe IV sweep JSON ===
+server.on("/ivsweep/data", HTTP_GET, [](AsyncWebServerRequest *request){
+  const uint16_t n = edugrid_mpp_algorithm::iv_point_count();
 
-    StaticJsonDocument<kIvJsonCapacity> doc;
-    JsonArray v_data = doc.createNestedArray("v");
-    JsonArray i_data = doc.createNestedArray("i");
-    JsonArray p_data = doc.createNestedArray("p");
+  // Capacity: 3 arrays (v,i,p) + 2 booleans
+  StaticJsonDocument<K_IV_JSON_CAPACITY> doc;
+  JsonArray v_data = doc.createNestedArray("v");
+  JsonArray i_data = doc.createNestedArray("i");
+  JsonArray p_data = doc.createNestedArray("p");
 
-    for (uint16_t i = 0; i < n; ++i) {
-      float v, cur;
-      edugrid_mpp_algorithm::iv_get_point(i, v, cur);
-      const float p = v * cur;
-      v_data.add(roundf(v * 1000.0f) / 1000.0f);
-      i_data.add(roundf(cur * 1000.0f) / 1000.0f);
-      p_data.add(roundf(p * 1000.0f) / 1000.0f);
-    }
+  // Fill arrays (keep your rounding so UI gets neat numbers)
+  for (uint16_t idx = 0; idx < n; ++idx) {
+    float v, cur;
+    edugrid_mpp_algorithm::iv_get_point(idx, v, cur);
+    const float p = v * cur;
 
-    doc["in_progress"] = edugrid_mpp_algorithm::iv_sweep_in_progress();
-    doc["done"]        = edugrid_mpp_algorithm::iv_sweep_done();
+    v_data.add(roundf(v   * 1000.0f) / 1000.0f);
+    i_data.add(roundf(cur * 1000.0f) / 1000.0f);
+    p_data.add(roundf(p   * 1000.0f) / 1000.0f);
+  }
 
-    String out;
-    serializeJson(doc, out);
-    request->send(200, "application/json", out);
-  });
+  doc["in_progress"] = edugrid_mpp_algorithm::iv_sweep_in_progress();
+  doc["done"]        = edugrid_mpp_algorithm::iv_sweep_done();
+
+  // Pre-reserve response to avoid reallocations
+  String out;
+  out.reserve(  (size_t)(n * 3 /*arrays*/ * 12 /*avg chars/num*/ + 96) );
+  serializeJson(doc, out);
+
+  // No-cache so browser doesn’t reuse stale curves during a sweep
+  AsyncWebServerResponse* res = request->beginResponse(200, "application/json", out);
+  res->addHeader("Cache-Control", "no-store");
+  request->send(res);
+});
 
   /* File actions (download/delete) */
   server.on("/filehandle", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -259,43 +268,52 @@ void edugrid_webserver::initWiFi(void)
  ************************************************************************/
 void edugrid_webserver::webSocketLoop(void)
 {
+  // Keep AsyncWebSocket’s own housekeeping
   webSocket.loop();
 
   static uint32_t lastPush = 0;
-  uint32_t now = millis();
+  const uint32_t now = millis();
   if (now - lastPush < WS_PUSH_INTERVAL_MS) return;
   lastPush = now;
 
-  /* PWM / converter */
-  doc["pwm"]      = (String)edugrid_pwm_control::getPWM() + " %";
-  doc["pwm_raw"]  = edugrid_pwm_control::getPWM();
-  doc["pwm_min"]  = edugrid_pwm_control::getPwmLowerLimit();
-  doc["pwm_max"]  = edugrid_pwm_control::getPwmUpperLimit();
-  doc["freq"]     = (String)edugrid_pwm_control::getFrequency_kHz() + " kHz";
-  switch (edugrid_mpp_algorithm::get_mode_state()) { // MANUALLY/AUTO/IV_SWEEP
-  case MANUALLY: doc["mode"] = "MANUAL";   break;
-  case AUTO:     doc["mode"] = "AUTO";     break;
-  case IV_SWEEP: doc["mode"] = "IV_SWEEP"; break;
-  default:       doc["mode"] = "UNKNOWN";  break;
+  // Build a fresh doc each tick to avoid cross-tick reuse issues
+  StaticJsonDocument< JSON_OBJECT_SIZE(16) > doc;
+
+  // --- Converter / PWM (numeric; add units in JS to reduce payload) ---
+  doc["pwm"]       = edugrid_pwm_control::getPWM();             // percent (0..100)
+  doc["pwm_min"]   = edugrid_pwm_control::getPwmLowerLimit();   // percent
+  doc["pwm_max"]   = edugrid_pwm_control::getPwmUpperLimit();   // percent
+  doc["freq_khz"]  = edugrid_pwm_control::getFrequency_kHz();   // kHz number
+
+  // --- Mode as string the UI expects ---
+  switch (edugrid_mpp_algorithm::get_mode_state()) {
+    case MANUALLY: doc["mode"] = "MANUAL";   break;
+    case AUTO:     doc["mode"] = "AUTO";     break;
+    case IV_SWEEP: doc["mode"] = "IV_SWEEP"; break;
+    default:       doc["mode"] = "UNKNOWN";  break;
+  }
+
+  // --- Measurements (numbers; format and round in JS) ---
+  doc["vin"]   = edugrid_measurement::V_in;
+  doc["iin"]   = edugrid_measurement::I_in;
+  doc["pin"]   = edugrid_measurement::P_in;
+
+  doc["vout"]  = edugrid_measurement::V_out;
+  doc["iout"]  = edugrid_measurement::I_out;
+  doc["pout"]  = edugrid_measurement::P_out;
+
+  doc["eff"]   = edugrid_measurement::eff; // 0..1 (multiply by 100 in JS)
+
+  // --- Misc state (string; unchanged) ---
+  doc["logging"] = edugrid_logging::getLogState_str();
+
+  // Serialize once into a pre-reserved buffer
+  String out;
+  out.reserve(256);
+  serializeJson(doc, out);
+  webSocket.broadcastTXT(out);
 }
 
-  /* Measurements (numeric; format in JS) */
-  doc["vin"]  = edugrid_measurement::V_in;
-  doc["iin"]  = edugrid_measurement::I_in;
-  doc["vout"] = edugrid_measurement::V_out;
-  doc["iout"] = edugrid_measurement::I_out;
-  doc["pin"]  = edugrid_measurement::P_in;
-  doc["pout"] = edugrid_measurement::P_out;
-  doc["eff"]  = edugrid_measurement::eff; // 0..1; multiply by 100 in JS
-
-  /* Misc */
-  doc["logging"]    = edugrid_logging::getLogState_str();
-
-  JSON_str = "";
-  serializeJson(doc, JSON_str);
-  webSocket.broadcastTXT(JSON_str);
-  doc.clear();
-}
 
 /*************************************************************************
  * File upload handler

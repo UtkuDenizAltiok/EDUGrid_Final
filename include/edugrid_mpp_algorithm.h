@@ -35,7 +35,7 @@ struct CycleTimesUs
     unsigned long NORMAL;
     unsigned long MPPT;
 };
-inline constexpr CycleTimesUs CycleTimes_us{10UL * 1000UL, 500UL * 1000UL};  // legacy default
+static constexpr CycleTimesUs CycleTimes_us{10UL * 1000UL, 500UL * 1000UL};  // legacy default
 
 /*************************************************************************
  * Class

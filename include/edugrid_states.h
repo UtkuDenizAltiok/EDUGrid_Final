@@ -69,6 +69,11 @@
 /* Derived: number of points, e.g., 5..95 step 1 => 91 points */
 #define IV_SWEEP_POINTS  (((IV_SWEEP_D_MAX_PCT - IV_SWEEP_D_MIN_PCT) / IV_SWEEP_STEP_PCT) + 1)
 
+// Size for /ivsweep/data JSON payload: {v:[], i:[], p:[], in_progress:bool, done:bool}
+#ifndef K_IV_JSON_CAPACITY
+#define K_IV_JSON_CAPACITY  ( JSON_OBJECT_SIZE(5) + 3 * JSON_ARRAY_SIZE(IV_SWEEP_POINTS) )
+#endif
+
 /* Old software settle/averaging knobs are now unused because we rely on the INA’s
    built-in averaging + INA_STEP_PERIOD_MS cadence. Keep for compatibility = 0. */
 #define IV_SETTLE_CYCLES          (0)

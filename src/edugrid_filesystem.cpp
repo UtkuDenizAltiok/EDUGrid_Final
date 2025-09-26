@@ -26,7 +26,6 @@ String edugrid_filesystem::config_wlan_ssid = "";
 String edugrid_filesystem::config_wlan_pw = "";
 String edugrid_filesystem::json_config_str = "";
 String edugrid_filesystem::config_log_name = "";
-String edugrid_filesystem::config_triac_state = "";
 
 /*************************************************************************
  * Function Definition
@@ -107,7 +106,6 @@ void edugrid_filesystem::loadConfig()
     config_wlan_ssid = getContent_str(CONFIG_FILEPATH_SSID);
     config_wlan_pw = getContent_str(CONFIG_FILEPATH_PW);
     config_log_name = getContent_str(CONFIG_FILEPATH_LOGNAME);
-    config_triac_state = getContent_str(CONFIG_FILEPATH_TRIAC);
 }
 
 /** Write an Arduino String to esp32 flash storage
