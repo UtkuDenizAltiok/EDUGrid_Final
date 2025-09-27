@@ -29,6 +29,15 @@ static float _I_out_off = 0.0f;   // current offset (LOAD)
 static float _vin_raw_last = 0.0f;   // raw PV bus (before smoothing), for presence detect
 
 
+static void _configureInaDevice(Adafruit_INA228& ina) {
+  ina.setShunt(INA_SHUNT_OHMS, INA_MAX_CURRENT_A);
+  ina.setAveragingCount(INA228_COUNT_128);          // AVG = 128 samples
+  ina.setVoltageConversionTime(INA228_TIME_1052_us);
+  ina.setCurrentConversionTime(INA228_TIME_1052_us);
+  ina.setMode(INA228_MODE_CONT_BUS_SHUNT);          // voltage + current only
+}
+
+
 static void _calibrateZeroOffsets(size_t samples,
                                   Adafruit_INA228* ina_pv,   bool ok_pv,
                                   Adafruit_INA228* ina_load, bool ok_load) {
@@ -62,23 +71,16 @@ void edugrid_measurement::init(void) {
     Serial.println("[INA] WARNING: device(s) not found (check I2C and addresses)");
   }
 
-  if (_ok_pv) {
-    _ina_pv.setShunt(INA_SHUNT_OHMS, INA_MAX_CURRENT_A);
-    _ina_pv.setAveragingCount(INA228_COUNT_128);          // AVG = 128
-    _ina_pv.setVoltageConversionTime(INA228_TIME_1052_us);
-    _ina_pv.setCurrentConversionTime(INA228_TIME_1052_us);
-    _ina_pv.setMode(INA228_MODE_CONT_BUS_SHUNT);  // no temperature channel
-  }
-  if (_ok_load) {
-    _ina_load.setShunt(INA_SHUNT_OHMS, INA_MAX_CURRENT_A);
-    _ina_load.setAveragingCount(INA228_COUNT_128);
-    _ina_load.setVoltageConversionTime(INA228_TIME_1052_us);
-    _ina_load.setCurrentConversionTime(INA228_TIME_1052_us);
-    _ina_load.setMode(INA228_MODE_CONT_BUS_SHUNT);
-  }
+  if (_ok_pv)   { _configureInaDevice(_ina_pv); }
+  if (_ok_load) { _configureInaDevice(_ina_load); }
 
   /* After both INAs are configured, tell the MPPT code the shared step period */
   edugrid_mpp_algorithm::set_step_period_ms(INA_STEP_PERIOD_MS);
+  Serial.printf("[INA] Step period = %lu ms (AVG %lu, conv %lu us, settle %lu ms)\n",
+                (unsigned long)INA_STEP_PERIOD_MS,
+                (unsigned long)INA_AVG_SAMPLES,
+                (unsigned long)INA_CONV_US,
+                (unsigned long)INA_EXTRA_SETTLE_MS);
 
   // One-time zero-offset capture (do this with PV/LOAD near 0 A for best accuracy)
   _calibrateZeroOffsets(300, &_ina_pv, _ok_pv, &_ina_load, _ok_load);

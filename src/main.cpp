@@ -134,7 +134,7 @@ void setup()
 
   // Start in MANUAL mode with a low duty cycle for safety on boot.
   edugrid_mpp_algorithm::set_mode_state(MANUALLY);
-  edugrid_pwm_control::setPWM(10, /*auto_mode=*/false); // Start at 10% duty
+  edugrid_pwm_control::setPWM(10); // Start at 10% duty
 
   /****** END OF SETUP, START TASKS ******/
   Serial.println(F("[RTOS] starting tasks..."));
