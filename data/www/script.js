@@ -129,6 +129,8 @@ function connectWS() {
       setText("power_out_label",   fmtW(pout));
       setText("efficiency_label",  fmtPct(eff));
 
+      updateLiveOperatingPoints(vin, iin);
+
       // ---------- Misc ----------
       setText("logging_label",    j.logging ?? "--");
 
@@ -172,6 +174,24 @@ window.addEventListener('load', function() {
 
 /* === IV CHART === */
 let ivChart = null;
+let liveOperatingPoints = [];
+
+function applyLivePointsToChart() {
+  if (!ivChart || !ivChart.data || !ivChart.data.datasets) return;
+  const ds = ivChart.data.datasets[3];
+  if (!ds) return;
+  ds.data = liveOperatingPoints.map(pt => ({ x: pt.x, y: pt.y }));
+}
+
+function updateLiveOperatingPoints(voltage, current) {
+  if (!Number.isFinite(voltage) || !Number.isFinite(current)) return;
+  liveOperatingPoints.push({ x: voltage, y: current });
+  if (liveOperatingPoints.length > 10) {
+    liveOperatingPoints.splice(0, liveOperatingPoints.length - 10);
+  }
+  applyLivePointsToChart();
+  if (ivChart) ivChart.update('none');
+}
 
 function initIvChart() {
   const el = document.getElementById('ivChart');
@@ -214,6 +234,22 @@ function initIvChart() {
           borderWidth: 3,    // thicker outline
           pointStyle: 'cross',
           order: 999
+        },
+        // Live operating point history (last 10 samples)
+        {
+          label: 'Live PV',
+          data: [],
+          yAxisID: 'yI',
+          showLine: false,
+          pointRadius: ctx => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 7 : 4),
+          pointHoverRadius: 8,
+          pointBorderWidth: 1,
+          pointBorderColor: 'rgba(0, 200, 83, 1)',
+          pointBackgroundColor: ctx => (ctx.dataIndex === ctx.dataset.data.length - 1
+            ? 'rgba(0, 200, 83, 0.95)'
+            : 'rgba(0, 200, 83, 0.35)'),
+          hitRadius: 10,
+          order: 998
         }
       ]
     },
@@ -230,6 +266,8 @@ function initIvChart() {
       plugins: { legend: { display: true } }
     }
   });
+
+  applyLivePointsToChart();
 }
 
 async function pollIvData() {
