@@ -10,7 +10,7 @@
 #include <math.h>
 
 /* ===== Static storage ===== */
-uint32_t edugrid_mpp_algorithm::_mppt_update_period_ms = CycleTimes_us.MPPT / 1000UL;
+uint32_t edugrid_mpp_algorithm::_mppt_update_period_ms = kDefaultStepPeriodMs;
 uint32_t edugrid_mpp_algorithm::_last_mppt_update_ms    = 0;
 
 void edugrid_mpp_algorithm::set_step_period_ms(uint32_t ms) {

@@ -45,7 +45,7 @@ void edugrid_pwm_control::initPwmPowerConverter(int freq_hz, int pin)
     ledcAttachPin(power_converter_pin, _ledc_channel); // attach ONCE
     pwm_abs_min = PWM_ABS_MIN_MPPT;
     pwm_abs_max = PWM_ABS_MAX_MPPT;
-    setPWM(PWM_ABS_INIT, /*auto_mode=*/false);
+    setPWM(PWM_ABS_INIT);
 }
 
 void edugrid_pwm_control::setPin(int pin)
@@ -79,7 +79,7 @@ uint8_t edugrid_pwm_control::getFrequency_kHz()
     return (uint8_t)((frequency_power_converter + 500) / 1000); // rounded
 }
 
-void edugrid_pwm_control::setPWM(uint8_t pwm_in, bool /*auto_mode*/)
+void edugrid_pwm_control::setPWM(uint8_t pwm_in)
 {
     if (pwm_in < pwm_abs_min) pwm_in = pwm_abs_min;
     if (pwm_in > pwm_abs_max) pwm_in = pwm_abs_max;
@@ -148,15 +148,15 @@ void edugrid_pwm_control::serviceManualRamp()
         }
     }
 
-    setPWM(static_cast<uint8_t>(current), /*auto_mode=*/false);
+    setPWM(static_cast<uint8_t>(current));
 }
 
-void edugrid_pwm_control::pwmIncrementDecrement(int step, bool auto_mode)
+void edugrid_pwm_control::pwmIncrementDecrement(int step)
 {
     int val = (int)pwm_power_converter + step;
     if (val < 0)   val = 0;
     if (val > 100) val = 100;
-    setPWM((uint8_t)val, auto_mode);
+    setPWM((uint8_t)val);
     // Align manual ramp state with the new duty to avoid fighting external updates
     manual_target = pwm_power_converter;
     manual_last_step_ms = millis();

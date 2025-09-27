@@ -26,16 +26,7 @@ enum OperatingModes_t
     _NUM_VALUES
 };
 
-/*************************************************************************
- * Cycle times (microseconds)
- * (Used only for default init; runtime cadence comes from INA_STEP_PERIOD_MS)
- ************************************************************************/
-struct CycleTimesUs
-{
-    unsigned long NORMAL;
-    unsigned long MPPT;
-};
-static constexpr CycleTimesUs CycleTimes_us{10UL * 1000UL, 500UL * 1000UL};  // legacy default
+static constexpr uint32_t kDefaultStepPeriodMs = INA_STEP_PERIOD_MS;
 
 /*************************************************************************
  * Class

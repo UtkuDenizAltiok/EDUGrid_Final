@@ -39,7 +39,8 @@
 
 /* One shared step period for AUTO (P&O) and IV Sweep (ms). 
    2 conversions (shunt+bus) * AVG + settle */
-#define INA_STEP_PERIOD_MS  ((uint32_t)((2UL * INA_CONV_US * INA_AVG_SAMPLES)/1000UL) + INA_EXTRA_SETTLE_MS)
+/* Round conversion window up to the next millisecond so we never sample early */
+#define INA_STEP_PERIOD_MS  ((uint32_t)(((2ULL * INA_CONV_US * INA_AVG_SAMPLES) + 999ULL) / 1000ULL) + INA_EXTRA_SETTLE_MS)
 
 /*************************************************************************
  * PWM / power stage
@@ -88,6 +89,9 @@
 #endif
 #if ((IV_SWEEP_D_MAX_PCT - IV_SWEEP_D_MIN_PCT) % IV_SWEEP_STEP_PCT) != 0
 #error "Sweep range must be divisible by IV_SWEEP_STEP_PCT"
+#endif
+#if (MPPT_DUTY_STEP_PCT != IV_SWEEP_STEP_PCT)
+#error "Keep MPPT and IV sweep duty steps identical so dwell timing matches"
 #endif
 
 /*************************************************************************

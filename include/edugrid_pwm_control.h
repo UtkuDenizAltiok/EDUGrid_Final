@@ -31,7 +31,7 @@ class edugrid_pwm_control
 {
 public:
     /* Percent-based API (0..100 %) */
-    static void     setPWM(uint8_t pwm_in, bool auto_mode = false);
+    static void     setPWM(uint8_t pwm_in);
     static uint8_t  getPWM();                  // 0..100 [%]
     static float    getPWM_normalized();       // 0.0..1.0
     static void     requestManualTarget(uint8_t target);
@@ -47,7 +47,7 @@ public:
     static void     initPwmPowerConverter(int freq_hz, int pin);
 
     /* Adjust duty in steps (signed) */
-    static void     pwmIncrementDecrement(int step = 5, bool auto_mode = false);
+    static void     pwmIncrementDecrement(int step = 5);
 
     /* Borders */
     static uint8_t  getPwmLowerLimit();
