@@ -14,6 +14,8 @@
 class edugrid_telemetry
 {
 public:
+    // Optional helper that prints a detailed status dump to the serial console
+    // when EDUGRID_TELEMETRY_ON is defined.  Useful during bring-up.
     static void telemetryPrint(void);
 };
 

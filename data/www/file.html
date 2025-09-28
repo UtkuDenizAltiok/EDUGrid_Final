@@ -25,7 +25,9 @@
   <p>%FILELIST%</p>
 
   <script>
-
+    // Buttons in the generated file table call this helper to either download
+    // or delete a specific file from LittleFS.  After deletion we refresh the
+    // list so the UI stays in sync with storage.
     function downloadDeleteButton(filename, action) {
       var filename_complete = filename;
       var urltocall = "/filehandle?name=" + filename_complete + "&action=" + action;

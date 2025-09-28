@@ -10,6 +10,9 @@
 #include <math.h>
 
 /* ===== Static storage ===== */
+// The MPPT and IV sweep share one cadence that aligns with the INA228 averaging
+// window.  `_last_mppt_update_ms` stores the last time we applied a duty change
+// so that both AUTO and IV_SWEEP respect the same timing budget.
 uint32_t edugrid_mpp_algorithm::_mppt_update_period_ms = kDefaultStepPeriodMs;
 uint32_t edugrid_mpp_algorithm::_last_mppt_update_ms    = 0;
 
@@ -47,6 +50,9 @@ void edugrid_mpp_algorithm::set_mode_state(OperatingModes_t mode)
     _mode_state = mode;
   // Reset P&O direction and last power when entering AUTO
   if (mode == AUTO) {
+    // Jumping into AUTO should not inherit stale slope information from a
+    // previous run; reset the internal state so the next iteration starts
+    // cleanly.
     _dir = +1;
     _lastPin = edugrid_measurement::P_in;
   }
@@ -63,6 +69,7 @@ int edugrid_mpp_algorithm::find_mpp(void)
 {
   const uint32_t now = millis();
   if ((now - _last_mppt_update_ms) < _mppt_update_period_ms) {
+    // Too early -> wait for the next INA228 averaged sample.
     return 0; // wait until INA average+settle window has passed
   }
   _last_mppt_update_ms = now;
@@ -88,6 +95,9 @@ int edugrid_mpp_algorithm::find_mpp(void)
 
 void edugrid_mpp_algorithm::request_iv_sweep()
 {
+  // A sweep is initiated from the web UI.  We reset the state machine so that
+  // the next call to iv_sweep_step() starts from the minimum duty and builds a
+  // brand new curve.
   _iv_finalize_applied = false;
   set_mode_state(IV_SWEEP);
   _iv_phase    = IVPhase::Arm;
@@ -101,6 +111,8 @@ void edugrid_mpp_algorithm::iv_sweep_step(void)
 {
   const uint32_t now = millis();
   if ((now - _iv_last_ms) < _mppt_update_period_ms) {
+    // Each step needs a fresh INA228 average.  If we run too early we would
+    // capture partially-settled values, so just exit and try again next tick.
     return;  // enforce one action per INA averaging window
   }
   _iv_last_ms = now;
@@ -108,11 +120,14 @@ void edugrid_mpp_algorithm::iv_sweep_step(void)
   switch (_iv_phase)
   {
     case IVPhase::Arm:
+      // Jump to the minimum duty and give the converter a full period to
+      // settle before capturing the first point.
       edugrid_pwm_control::setPWM(IV_SWEEP_D_MIN_PCT);
       _iv_phase = IVPhase::WaitAfterSet;   // allow settle+averaging before reading
       break;
 
     case IVPhase::WaitAfterSet:
+      // No action other than waiting for the next tick where we will sample.
       _iv_phase = IVPhase::Sample;         // a full period just elapsed
       break;
 
@@ -136,6 +151,8 @@ void edugrid_mpp_algorithm::iv_sweep_step(void)
     case IVPhase::Done:
     default:
       if (!_iv_finalize_applied) {
+        // Restore the converter to a known good state (max duty) and hand
+        // control back to manual mode until the user decides the next action.
         _iv_finalize_applied = true;
         edugrid_pwm_control::setPWM(PWM_MAX_DUTY_PCT);
         edugrid_pwm_control::requestManualTarget(PWM_MAX_DUTY_PCT);

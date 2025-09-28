@@ -95,6 +95,9 @@
   <!-- Zero Calibration Button -->
   <button id="btnZeroOffsets" class="normallabel" type="button">Zero Sensor Offsets</button>
   <script>
+    // Allow the operator to re-run the INA228 zero-current calibration without
+    // opening a serial console.  The UI disables the button while the firmware
+    // samples the offsets to avoid triggering multiple requests in parallel.
     document.getElementById('btnZeroOffsets').addEventListener('click', async () => {
       const b = document.getElementById('btnZeroOffsets');
       const old = b.textContent;
@@ -115,6 +118,7 @@
 
   <!-- IV Curve -->
   <h4>IV Curve</h4>
+  <!-- Clicking this button sends /ivsweep/start; script.js handles updating the chart -->
   <button id="ivStartBtn" class="normallabel" type="button">Run IV Sweep</button>
   <canvas id="ivChart" width="420" height="280"></canvas>
   <div id="mppInfo" style="margin-top:4px;font-size:12px;"></div>

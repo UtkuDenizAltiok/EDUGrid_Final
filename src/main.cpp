@@ -25,8 +25,12 @@
 /************************************************************************
  * RTOS Task Handles
  ************************************************************************/
-TaskHandle_t core2; // WebSocket & WiFi
-TaskHandle_t core3; // MPPT Algorithm and Sensors
+// FreeRTOS allows us to pin work to a specific CPU core on the ESP32.  We keep
+// one core busy with all networking tasks (HTTP + WebSocket pumping) and the
+// other core dedicated to the fast MPPT + sensing loop so that timing stays
+// deterministic even when a client is connected to the UI.
+TaskHandle_t core2; // WebSocket & WiFi (core 0)
+TaskHandle_t core3; // MPPT Algorithm and Sensors (core 1)
 
 /************************************************************************
  * Task 2: WebSocket pump
@@ -36,7 +40,13 @@ void coreTwo(void *pvParameters)
   (void)pvParameters;
   for (;;)
   {
+    // The websocket loop performs two things: housekeeping for the underlying
+    // AsyncWebServer stack and the actual JSON broadcast of the live data.  We
+    // call it periodically instead of from loop() so the UI stays responsive
+    // regardless of what the rest of the firmware is doing.
     edugrid_webserver::webSocketLoop();
+    // A short delay yields to other RTOS tasks while keeping the broadcast
+    // cadence defined in edugrid_states.h.
     vTaskDelay(pdMS_TO_TICKS(TASK_WEBSOCKET_INTERVAL_MS));
   }
 }
@@ -50,9 +60,13 @@ void coreThree(void *pvParameters)
   for (;;)
   {
     /* 1) Always update sensor cache first */
+    // Update the cached measurements from both INA228s.  All other modules read
+    // from this cache so it must be refreshed first.
     edugrid_measurement::getSensors();
 
     /* 2) Keep duty within safe/allowed borders (this is good practice) */
+    // Keep the converter duty inside the configured safe window and honour the
+    // manual slew limiter that makes slider movements smooth.
     edugrid_pwm_control::checkAndSetPwmBorders();
     edugrid_pwm_control::serviceManualRamp();
 
@@ -66,12 +80,16 @@ void coreThree(void *pvParameters)
       case AUTO:
         // The find_mpp() function has its own internal timer.
         // We call it every loop, and it will only act when it's time.
+        // Perturb & Observe algorithm adjusts the duty cycle when the MPPT
+        // timer inside the module says it is time to sample again.
         edugrid_mpp_algorithm::find_mpp();
         break;
 
       case IV_SWEEP:
         // The iv_sweep_step() function acts as a state machine.
         // Calling it every loop tick drives the sweep forward one step at a time.
+        // Advance the IV sweep state machine one step.  The helper manages its
+        // own timing so we simply call it as fast as the task cadence allows.
         edugrid_mpp_algorithm::iv_sweep_step();
         break;
     }
@@ -134,7 +152,7 @@ void setup()
 
   // Start in MANUAL mode with a low duty cycle for safety on boot.
   edugrid_mpp_algorithm::set_mode_state(MANUALLY);
-  edugrid_pwm_control::setPWM(10); // Start at 10% duty
+  edugrid_pwm_control::setPWM(10); // Start at 10% duty so the converter is safe
 
   /****** END OF SETUP, START TASKS ******/
   Serial.println(F("[RTOS] starting tasks..."));
@@ -161,6 +179,9 @@ void setup()
  ************************************************************************/
 void loop()
 {
+  // Persist one line of CSV data to the log buffer each second.  The logging
+  // module takes care of checking whether logging is active and when to flush
+  // the buffered lines to flash.
   edugrid_logging::appendLog(
       edugrid_measurement::V_in,
       edugrid_measurement::V_out,
