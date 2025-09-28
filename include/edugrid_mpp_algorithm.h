@@ -20,9 +20,9 @@
  ************************************************************************/
 enum OperatingModes_t
 {
-    MANUALLY = 0,
-    AUTO,
-    IV_SWEEP,
+    MANUALLY = 0,  ///< UI-driven duty cycle (no automatic tracking)
+    AUTO,          ///< Perturb & Observe MPPT loop
+    IV_SWEEP,      ///< Deterministic sweep of duty for IV curve capture
     _NUM_VALUES
 };
 
@@ -35,6 +35,13 @@ class edugrid_mpp_algorithm
 {
 public:
     /* ===== MPPT (Perturb & Observe) ===== */
+    /**
+     * @brief Perturb & Observe MPPT worker.
+     *
+     * The function is designed to be called very frequently.  It only acts
+     * when the shared timer (set via set_step_period_ms()) has elapsed and
+     * otherwise returns immediately.
+     */
     static int              find_mpp(void);
     static void             set_step_period_ms(uint32_t ms);
 

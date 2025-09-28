@@ -31,9 +31,15 @@ class edugrid_pwm_control
 {
 public:
     /* Percent-based API (0..100 %) */
+    // Percent-based API; the class stores the current duty internally and also
+    // mirrors the value to the hardware PWM peripheral.
     static void     setPWM(uint8_t pwm_in);
     static uint8_t  getPWM();                  // 0..100 [%]
     static float    getPWM_normalized();       // 0.0..1.0
+
+    // Manual mode helper: the UI does not step the duty directly; instead it
+    // requests a target value and the ramp function slews towards it at a safe
+    // speed so the power stage never jumps abruptly.
     static void     requestManualTarget(uint8_t target);
     static void     serviceManualRamp();
 

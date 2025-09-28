@@ -15,6 +15,8 @@ static const char* modeToStr(OperatingModes_t m) {
 
 void edugrid_telemetry::telemetryPrint(void)
 {
+  // Human readable dump of the most important runtime values.  Triggered from
+  // the MPPT task when EDUGRID_TELEMETRY_ON is defined.
   Serial.println("* ------------------------------------ *");
   Serial.println("* PWM CONTROL");
   Serial.println("* ------------------------------------ *");

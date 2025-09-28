@@ -35,6 +35,9 @@ String edugrid_filesystem::config_log_name = "";
  */
 int edugrid_filesystem::init_filesystem()
 {
+    // Mount LittleFS once during boot.  All subsequent file operations rely on
+    // the `filesystem_mounted` flag so we never attempt to access storage that
+    // failed to initialise.
     if (!LittleFS.begin())
     {
         state_filesystem = STATE_FILESYSTEM_ERROR;
@@ -77,6 +80,8 @@ String edugrid_filesystem::getContent_str(String path)
             Serial.println(" failed to open");
         }
 
+        // Read the entire file into a String so callers can parse the contents
+        // without dealing with FS streams.
         file_content = open_file.readString();
         open_file.close();
         Serial.print("| OK | File ");
@@ -103,6 +108,9 @@ int edugrid_filesystem::getContent_int(String path)
 
 void edugrid_filesystem::loadConfig()
 {
+    // Configuration files are plain text; each helper returns an empty string
+    // if the file does not exist so the Wi-Fi AP falls back to compiled
+    // defaults.
     config_wlan_ssid = getContent_str(CONFIG_FILEPATH_SSID);
     config_wlan_pw = getContent_str(CONFIG_FILEPATH_PW);
     config_log_name = getContent_str(CONFIG_FILEPATH_LOGNAME);
@@ -118,6 +126,9 @@ void edugrid_filesystem::writeContent_str(String path, String content, bool appe
 
     if (appending)
     {
+        // Append mode is used for the CSV log.  We open the file in FILE_APPEND
+        // so the new block is added to the end without overwriting previous
+        // data.
         /* Appending */
         File file = LittleFS.open(path, FILE_APPEND);
         if (!file)
@@ -176,6 +187,9 @@ void edugrid_filesystem::writeContent_str(String path, String content, bool appe
  */
 void edugrid_filesystem::setWiFiCredentials(String ssid, String pw)
 {
+    // Update the cached values so the running access point reflects the new
+    // credentials immediately and persist them so the next reboot uses them
+    // automatically.
     config_wlan_ssid = ssid;
     config_wlan_pw = pw;
     writeContent_str(CONFIG_FILEPATH_SSID, config_wlan_ssid);

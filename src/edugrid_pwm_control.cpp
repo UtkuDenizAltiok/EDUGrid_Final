@@ -30,6 +30,8 @@ static portMUX_TYPE s_pwmMux = portMUX_INITIALIZER_UNLOCKED;
 /* ===== private helpers ===== */
 void edugrid_pwm_control::_applyToHardware(uint8_t pwm_percent)
 {
+    // Convert from a human-friendly percentage into the raw LEDC timer counts.
+    // The LEDC peripheral expects a value between 0 and 255 (8-bit resolution).
     if (pwm_percent > 100) pwm_percent = 100;
     const uint32_t ticks = (uint32_t)((pwm_percent / 100.0f) * PWM_RESOLUTION_STEPS + 0.5f);
     ledcWrite(_ledc_channel, ticks);
@@ -117,6 +119,8 @@ void edugrid_pwm_control::serviceManualRamp()
     const uint32_t now = millis();
 
     if (mode != MANUALLY) {
+        // In AUTO/IV modes the MPPT logic drives the duty.  Reset the ramp so
+        // the next manual request starts from the live duty without a jump.
         manual_target = pwm_power_converter;
         manual_last_step_ms = now;
         return;
@@ -127,6 +131,7 @@ void edugrid_pwm_control::serviceManualRamp()
     }
 
     if ((now - manual_last_step_ms) < MANUAL_SLEW_INTERVAL_MS) {
+        // Enforce the configured slew rate.
         return;
     }
 
@@ -148,6 +153,7 @@ void edugrid_pwm_control::serviceManualRamp()
         }
     }
 
+    // Update the cached value and mirror it to the hardware.
     setPWM(static_cast<uint8_t>(current));
 }
 

@@ -35,6 +35,7 @@ class edugrid_filesystem
 {
 private:
 public:
+    // Initialise and read helper methods used during setup() and by the web UI.
     static int init_filesystem();
     static int get_filesystem_state();
     static String getContent_str(String path);

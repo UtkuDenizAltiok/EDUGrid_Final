@@ -31,6 +31,8 @@ static const char *PARAM_INPUT_2 = "STATE";
  ************************************************************************/
 String edugrid_webserver::processor(const String &var)
 {
+  // Replacement callback used by AsyncWebServer to fill placeholders inside
+  // the HTML templates stored in LittleFS.
   if (var == "BUTTONPLACEHOLDER") {
     return (String)EDUGRID_VERSION;
   }
@@ -69,6 +71,8 @@ void edugrid_webserver::initWiFi(void)
 
   /* HTTP routes */
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    // processor() injects dynamic values (version, file listing) into the
+    // pre-compressed HTML stored in LittleFS.
     request->send(LittleFS, WEBSERVER_HOME_PATH, String(), false, processor);
   });
 
@@ -95,6 +99,7 @@ void edugrid_webserver::initWiFi(void)
 
     /* --- IV SWEEP API --- */
   server.on("/ivsweep/start", HTTP_GET, [](AsyncWebServerRequest *request){
+    // Trigger the non-blocking state machine in the MPPT task.
     edugrid_mpp_algorithm::request_iv_sweep();
     request->send(200, "application/json", "{\"status\":\"started\"}");
   });
@@ -268,6 +273,9 @@ void edugrid_webserver::webSocketLoop(void)
   lastPush = now;
 
   // Build a fresh doc each tick to avoid cross-tick reuse issues
+  // The websocket payload mirrors the REST API but is pushed automatically to
+  // keep the dashboard live without polling.  A stack-allocated document keeps
+  // heap fragmentation low.
   StaticJsonDocument< JSON_OBJECT_SIZE(20) > doc;
 
   // --- Converter / PWM (numeric; add units in JS to reduce payload) ---
@@ -316,12 +324,16 @@ void edugrid_webserver::handleUpload(AsyncWebServerRequest *request, String file
                                      size_t index, uint8_t *data, size_t len, bool final)
 {
   if (!index) {
+    // First chunk: create/overwrite the destination file in LittleFS.
     request->_tempFile = LittleFS.open("/" + filename, "w");
   }
   if (len) {
+    // Write the received chunk.  AsyncWebServer already ensures this callback
+    // runs fast by splitting the upload into manageable pieces.
     request->_tempFile.write(data, len);
   }
   if (final) {
+    // Close and redirect the browser back to the file manager.
     request->_tempFile.close();
     request->redirect("/file");
   }
@@ -335,6 +347,7 @@ String edugrid_webserver::listFiles(bool ishtml)
   String returnText;
 
   auto listDir = [&](const char* path) {
+    // Iterate through a directory and append one HTML table row per entry.
     File root = LittleFS.open(path);
     if (!root) return;
     File f = root.openNextFile();

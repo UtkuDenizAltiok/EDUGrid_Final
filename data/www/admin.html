@@ -35,6 +35,8 @@
 
 
   <script>
+    // Push new Wi-Fi credentials to the firmware via the generic /updatevalues
+    // endpoint.  The ESP32 persists the strings using LittleFS.
     function safeButton_pressed(button, element1, element2) {
       var safed_label_text = document.getElementById("safed_label");
       safed_label_text.innerHTML = "WLAN settings safed!";

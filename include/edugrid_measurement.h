@@ -30,6 +30,17 @@ public:
    */
   static void init(void);
 
+  /**
+   * @brief Recalculate the shunt current offsets by averaging N samples.
+   *
+   * The INA228 reports a tiny offset current even when the PV and load are
+   * disconnected.  Calling this helper allows the user (via the web UI) to re-
+   * zero the readings so that the displayed current is exactly 0 A when no
+   * power flows.
+   *
+   * @param samples Number of readings per channel to average over.  Higher
+   *                values give a more stable offset at the expense of time.
+   */
   static void calibrateZeroOffsets(size_t samples = 300);
 
   /**
@@ -44,10 +55,14 @@ public:
    * These mirror the original project’s style so other modules
    * (telemetry, logging, MPPT) can read them directly.
    */
+  // Latest PV-side readings.  The variables are intentionally public so that
+  // legacy code (telemetry, logging, UI handlers) can read them without getter
+  // boilerplate.  Treat them as read-only outside this class.
   static float V_in;    ///< PV bus voltage [V]
   static float I_in;    ///< PV current [A]
   static float P_in;    ///< PV power [W]
 
+  // Latest load-side readings.
   static float V_out;   ///< Load/output voltage [V]
   static float I_out;   ///< Load/output current [A]
   static float P_out;   ///< Output power [W]
@@ -65,6 +80,8 @@ private:
   static Adafruit_INA228 _ina_pv;    ///< INA228 at INA_PV_ADDR
   static Adafruit_INA228 _ina_load;  ///< INA228 at INA_LOAD_ADDR
 
+  // Flags indicate if each INA device responded during init().  They gate the
+  // low-level reads so that one bad sensor does not crash the whole system.
   static bool _ok_pv;
   static bool _ok_load;
 

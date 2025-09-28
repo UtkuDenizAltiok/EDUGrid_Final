@@ -46,6 +46,8 @@ String edugrid_logging::getLogState_str()
 
 void edugrid_logging::activateLogging()
 {
+  // Start a brand-new session: wipe the on-disk CSV file and clear the in-RAM
+  // buffer so that the user receives a clean dataset.
   log_active = true;
   log_start_time = millis();
   log_message_buffer = "";
@@ -60,6 +62,8 @@ void edugrid_logging::activateLogging()
 
 void edugrid_logging::deactivateLogging()
 {
+  // The safe_request flag instructs appendLog() to flush the remaining buffer
+  // the next time it runs so we do not lose the last partial block of data.
   log_active = false;
   safe_request = true;
   log_start_time = 0;

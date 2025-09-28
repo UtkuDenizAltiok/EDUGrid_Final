@@ -30,11 +30,16 @@
 class edugrid_logging
 {
 public:
+    // Log control entry points used by the web UI and by setup().
     static bool getLogState();
     static String getLogState_str();
     static void activateLogging();
     static void deactivateLogging();
     static void toggleLogging();
+
+    // Append a single CSV row (Vin, Vout, Iin, Iout).  The helper takes care of
+    // buffering and flashing the data in blocks so the main loop only needs to
+    // call it once per second.
     static void appendLog(float vin, float vout, float iin, float iout);
 
 private:
