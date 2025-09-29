@@ -73,8 +73,8 @@ private:
     static uint32_t         _last_mppt_update_ms;
 
     /* ---------- IV sweep state machine ---------- */
-    // Must match the .cpp usage: Idle -> Arm -> WaitAfterSet -> Sample -> Done
-    enum class IVPhase : uint8_t { Idle = 0, Arm, WaitAfterSet, Sample, Done };
+    // Must match the .cpp usage: Idle -> Arm -> Sample -> Done
+    enum class IVPhase : uint8_t { Idle = 0, Arm, Sample, Done };
     static IVPhase          _iv_phase;
     static uint16_t         _iv_idx;        // current point index
     static uint16_t         _iv_count;      // number of points captured

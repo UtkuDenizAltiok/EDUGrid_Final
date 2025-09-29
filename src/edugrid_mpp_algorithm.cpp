@@ -111,54 +111,53 @@ void edugrid_mpp_algorithm::iv_sweep_step(void)
 {
   const uint32_t now = millis();
   if ((now - _iv_last_ms) < _mppt_update_period_ms) {
-    // Each step needs a fresh INA228 average.  If we run too early we would
-    // capture partially-settled values, so just exit and try again next tick.
-    return;  // enforce one action per INA averaging window
+    return;  // wait until a fresh INA228 average is ready
   }
   _iv_last_ms = now;
 
+  const auto finalizeSweep = [&]() {
+    if (_iv_finalize_applied) return;
+    _iv_finalize_applied = true;
+    edugrid_pwm_control::setPWM(PWM_MAX_DUTY_PCT);
+    edugrid_pwm_control::requestManualTarget(PWM_MAX_DUTY_PCT);
+    set_mode_state(MANUALLY);
+  };
+
   switch (_iv_phase)
   {
-    case IVPhase::Arm:
-      // Jump to the minimum duty and give the converter a full period to
-      // settle before capturing the first point.
-      edugrid_pwm_control::setPWM(IV_SWEEP_D_MIN_PCT);
-      _iv_phase = IVPhase::WaitAfterSet;   // allow settle+averaging before reading
-      break;
+    case IVPhase::Idle:
+      return;
 
-    case IVPhase::WaitAfterSet:
-      // No action other than waiting for the next tick where we will sample.
-      _iv_phase = IVPhase::Sample;         // a full period just elapsed
-      break;
+    case IVPhase::Arm:
+      // Jump to the sweep start duty and wait one full averaging window
+      edugrid_pwm_control::setPWM(IV_SWEEP_D_MIN_PCT);
+      _iv_idx   = 0;
+      _iv_count = 0;
+      _iv_phase = IVPhase::Sample;
+      return;
 
     case IVPhase::Sample:
-      // Store a single averaged point (V_in, I_in) at current duty
       if (_iv_idx < IV_SWEEP_POINTS) {
         _iv_v[_iv_idx] = edugrid_measurement::V_in;
         _iv_i[_iv_idx] = edugrid_measurement::I_in;
         _iv_count = _iv_idx + 1;
       }
-      // Decide next step
-      if (edugrid_pwm_control::getPWM() >= IV_SWEEP_D_MAX_PCT || _iv_idx + 1 >= IV_SWEEP_POINTS) {
+
+      if ((_iv_idx + 1 >= IV_SWEEP_POINTS) ||
+          (edugrid_pwm_control::getPWM() >= IV_SWEEP_D_MAX_PCT)) {
         _iv_phase = IVPhase::Done;
-      } else {
-        _iv_idx++;
-        edugrid_pwm_control::pwmIncrementDecrement(+IV_SWEEP_STEP_PCT);
-        _iv_phase = IVPhase::WaitAfterSet;
+        finalizeSweep();
+        return;
       }
-      break;
+
+      ++_iv_idx;
+      edugrid_pwm_control::pwmIncrementDecrement(+IV_SWEEP_STEP_PCT);
+      return;
 
     case IVPhase::Done:
     default:
-      if (!_iv_finalize_applied) {
-        // Restore the converter to a known good state (max duty) and hand
-        // control back to manual mode until the user decides the next action.
-        _iv_finalize_applied = true;
-        edugrid_pwm_control::setPWM(PWM_MAX_DUTY_PCT);
-        edugrid_pwm_control::requestManualTarget(PWM_MAX_DUTY_PCT);
-        set_mode_state(MANUALLY);
-      }
-      break;  // no-op; caller can query iv_sweep_done()
+      finalizeSweep();
+      return;
   }
 }
 
